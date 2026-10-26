@@ -1,0 +1,40 @@
+#!/usr/bin/env python3
+"""Ensure the documentation artwork exception cannot admit arbitrary binaries."""
+from pathlib import Path
+import tempfile
+import unittest
+from check_repository_hygiene import ROOT, audit
+
+
+class ArtworkHygieneTests(unittest.TestCase):
+    def setUp(self):
+        self.directory = tempfile.TemporaryDirectory()
+        self.addCleanup(self.directory.cleanup)
+        self.root = Path(self.directory.name)
+        self.path = self.root / 'docs/assets/master-chef-header.png'
+        self.path.parent.mkdir(parents=True)
+        self.art = (ROOT / 'docs/assets/master-chef-header.png').read_bytes()
+
+    def test_exact_reviewed_art(self):
+        self.path.write_bytes(self.art)
+        self.assertEqual(audit(self.root, strict=True)[1], [])
+
+    def test_changed_art_rejected(self):
+        self.path.write_bytes(self.art + b'changed')
+        self.assertEqual(audit(self.root, strict=True)[1][0][2], 'unreviewed-documentation-art')
+
+    def test_different_path_rejected(self):
+        self.path.with_name('unreviewed.png').write_bytes(self.art)
+        self.assertEqual(audit(self.root, strict=True)[1][0][2], 'binary-file')
+
+    def test_text_cannot_hide_under_image_name(self):
+        self.path.write_text('unreviewed private input')
+        self.assertEqual(audit(self.root, strict=True)[1][0][2], 'unreviewed-documentation-art')
+
+    def test_save_archive_rejected_even_when_text_encoded(self):
+        (self.root / 'campaign.mc-save').write_text('{"snapshot": "private-player-progress"}')
+        self.assertIn(('campaign.mc-save', 0, 'non-source-artifact'), audit(self.root, strict=True)[1])
+
+
+if __name__ == '__main__':
+    unittest.main()

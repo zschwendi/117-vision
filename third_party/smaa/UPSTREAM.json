@@ -1,0 +1,27 @@
+{
+  "project": "SMAA: Enhanced Subpixel Morphological Antialiasing",
+  "authors": "Jorge Jimenez, Jose I. Echevarria, Belen Masia, Fernando Navarro, Diego Gutierrez",
+  "license": "MIT (see LICENSE)",
+  "source": "https://github.com/iryoku/smaa/tree/71c806a838bdd7d517df19192a20f0c61b3ca29d",
+  "obtained_via": "https://github.com/steverice/visr/tree/5754170b18f39cbd5824330848cb0815fdd3a44e/port/third_party/smaa, which records that SMAA.hlsl is copied unchanged from the upstream commit above and that its area_tex.zlib and search_tex.zlib are the bytes of Textures/AreaTex.h and Textures/SearchTex.h compressed with zlib.",
+  "files": {
+    "SMAA.hlsl": {
+      "bytes": 54447,
+      "sha256": "346475bbf46aedd1d2af4f7016883ad7450ade05b9f106dce288a14f2e456a0b",
+      "upstream_sha256": "fafdaa26c30ee6c12c2610c3093d7109f9df99207f23fcf9e215b6516296aafd",
+      "modified": "Transcoded from Latin-1 to UTF-8 (two U+00B7 middle dots in the comment diagram at lines 53 and 63) for the repository's text-only source policy. No other change."
+    },
+    "LICENSE": {"bytes": 1446, "sha256": "6088dabb2126729ddb2355b179ce0598e7c246406677b30395f22220695d69fe"},
+    "AreaTex.hex": {
+      "content": "AreaTex: 160x560, two channels (R8G8), 179200 bytes as hex text, one image row per line",
+      "data_sha256": "35065cef2a02cabcad711d6bf430239ae64e27d71c4e4fa06f29cce2c992f0d2",
+      "derived_from": "area_tex.zlib (sha256 a6b529f0505f574afe22106667c276824ae0936662fe90230e4ad111d7810e62), decompressed"
+    },
+    "SearchTex.hex": {
+      "content": "SearchTex: 64x16, one channel (R8), 1024 bytes as hex text, one image row per line",
+      "data_sha256": "3694eae5e9d44b8ebb4415a13f8c7b94dc08a2fc86658434d771c4610fe5744d",
+      "derived_from": "search_tex.zlib (sha256 a860190645d692cb4cdeb13506032dfe13fdbfc5a53932d8035d9eedd870bacb), decompressed"
+    }
+  },
+  "derived": "native/EngineHost/smaa_msl.inc is generated from these files by tools/generate_smaa_msl.py (Metal Shading Language rewrite of the HLSL out/inout parameters and swizzled conditional moves, plus the lookup textures as raw DEFLATE). It keeps the MIT notice."
+}

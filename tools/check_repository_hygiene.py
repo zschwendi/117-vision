@@ -1,0 +1,78 @@
+#!/usr/bin/env python3
+"""Audit release source paths and text; never print suspected secret values.
+
+Use --strict for a distribution tree, including normally ignored artifacts.
+This is a layered guard, not a guarantee that every possible secret is detected.
+"""
+import argparse
+import hashlib
+from pathlib import Path
+import re
+import sys
+
+ROOT = Path(__file__).resolve().parents[1]
+SKIP = {'.git', '.build', '.setup', '__pycache__', '.venv', 'game', 'build', 'logs', 'dist', 'DerivedData'}
+# Explicitly reviewed generated documentation art, never a general binary
+# allowlist. Changing this image requires reviewing and updating its digest.
+DOCUMENTATION_ART = {
+    'docs/assets/master-chef-header.png': 'e15bc1102ca36f40e357c39d48149445f94115971a9469406f7e67c9f442a386',
+}
+# Original generated app artwork is also admitted only at its reviewed path and
+# exact digest. Other image files remain subject to the binary-file guard.
+APP_ICON_ART = {
+    'native/EnginePad/Resources/Assets.xcassets/MasterCheefArtwork.imageset/master-cheef-artwork.png': 'c8ccbd515a02d5c74c24ba97692580d7b8787f856c41247923d55c3803a08426',
+    'native/EngineVision/Resources/Assets.xcassets/MasterCheefArtwork.imageset/master-cheef-artwork.png': 'c8ccbd515a02d5c74c24ba97692580d7b8787f856c41247923d55c3803a08426',
+    'native/EnginePad/Resources/Assets.xcassets/AppIcon.appiconset/master-cheef-ipad.png': '501b1036088625a09f99f8f5fc4d97c33e1be39eceb6e2efa0e92df7f468dc7d',
+    'native/EngineVision/Resources/Assets.xcassets/AppIcon.solidimagestack/Back.solidimagestacklayer/Content.imageset/master-cheef-icon-background.png': '55d760f98712d0e112389116c564739d769bc3c5235e648b6bc5a4eb02a4909b',
+    'native/EngineVision/Resources/Assets.xcassets/AppIcon.solidimagestack/Front.solidimagestacklayer/Content.imageset/master-cheef-icon-foreground.png': 'b55fef0e4efc046a15a328ed82c5ea89f094181c7b030cacc5c573bb6aa500d8',
+}
+BAD_SUFFIX = {'.exe', '.dll', '.map', '.iso', '.ipa', '.p12', '.p8', '.pfx', '.pem', '.key',
+              '.mobileprovision', '.provisionprofile', '.o', '.a', '.dylib', '.so', '.pyc',
+              '.zip', '.tpf', '.hvt', '.hvs', '.mc-save', '.bgra', '.mov', '.mp4', '.jsonl', '.log', '.reg'}
+RULES = {
+    'home-directory': re.compile(r'/(?:Users|home)/[^/\s"\']+'),
+    'private-key': re.compile(r'-----BEGIN (?:RSA |EC |OPENSSH |DSA )?PRIVATE KEY-----'),
+    'github-token': re.compile(r'\b(?:gh[pousr]_[A-Za-z0-9]{30,}|github_pat_[A-Za-z0-9_]{40,})\b'),
+    'cloud-key': re.compile(r'\b(?:AKIA|ASIA)[A-Z0-9]{16}\b'),
+    'service-token': re.compile(r'\b(?:sk-(?:proj-)?[A-Za-z0-9_-]{30,}|xox[baprs]-[A-Za-z0-9-]{20,})\b'),
+    'private-network': re.compile(r'\b(?:192\.168\.\d{1,3}\.\d{1,3}|10\.\d{1,3}\.\d{1,3}\.\d{1,3})\b'),
+    'apple-device-id': re.compile(r'\b[0-9A-Fa-f]{8}-[0-9A-Fa-f]{16}\b'),
+}
+
+def audit(root, strict=False):
+    failures=[]; count=0
+    for p in sorted(root.rglob('*')):
+        rel=p.relative_to(root)
+        if '.git' in rel.parts:continue
+        if not strict and any(part in SKIP for part in rel.parts):continue
+        if p.is_symlink():failures.append((str(rel),0,'symbolic-link'));continue
+        if not p.is_file():continue
+        count+=1
+        if (p.suffix.lower() in BAD_SUFFIX or p.name in {'.DS_Store','.env','halo-vision-registry.txt'}
+            or any(part.endswith(('.app','.xcarchive','.dSYM')) for part in rel.parts)
+            or any(part in {'assessment','local-agent-inputs','.context','.claude','.setup'} for part in rel.parts)):
+            failures.append((str(rel),0,'non-source-artifact'))
+        art = DOCUMENTATION_ART if rel.as_posix() in DOCUMENTATION_ART else APP_ICON_ART
+        if rel.as_posix() in art:
+            data=p.read_bytes()
+            if not data.startswith(b'\x89PNG\r\n\x1a\n') or hashlib.sha256(data).hexdigest()!=art[rel.as_posix()]:
+                kind='unreviewed-documentation-art' if art is DOCUMENTATION_ART else 'unreviewed-app-icon-art'
+                failures.append((str(rel),0,kind))
+            continue
+        try:text=p.read_text(encoding='utf-8')
+        except UnicodeError:
+            failures.append((str(rel),0,'binary-file'));continue
+        for n,line in enumerate(text.splitlines(),1):
+            for kind,pattern in RULES.items():
+                if pattern.search(line):failures.append((str(rel),n,kind))
+    return count,failures
+
+def main():
+    parser=argparse.ArgumentParser(description=__doc__);parser.add_argument('--strict',action='store_true')
+    parser.add_argument('--root',type=Path,default=ROOT);args=parser.parse_args()
+    count,failures=audit(args.root.resolve(),args.strict)
+    for path,line,kind in failures:print(f'{path}:{line}: {kind}')
+    print(f'{"FAIL" if failures else "PASS"}: {count} source files checked; {len(failures)} findings')
+    return bool(failures)
+
+if __name__=='__main__':sys.exit(main())

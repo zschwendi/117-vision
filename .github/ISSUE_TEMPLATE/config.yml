@@ -1,0 +1,11 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Installation and troubleshooting
+    url: https://github.com/zschwendi/117-vision/blob/main/docs/SETUP.md
+    about: Prerequisites, ISO setup, existing installations, and Windows fallback.
+  - name: Set up with a coding agent
+    url: https://github.com/zschwendi/117-vision/blob/main/docs/AGENT_SETUP.md
+    about: Copy/paste prompt and a step-by-step procedure for your agent.
+  - name: Source releases and checksums
+    url: https://github.com/zschwendi/117-vision/releases
+    about: Source releases and integrity information. Game content and signed apps are not included.

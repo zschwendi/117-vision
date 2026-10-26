@@ -2,17 +2,20 @@
 
 ## App artwork
 
-The `MasterCheefArtwork.imageset` in both app asset catalogs contains the same
-generated helmet illustration, `master-cheef-artwork.png`. The PNG retains
-OpenAI image-generation provenance. The mobile `master-cheef-ipad.png` and
-visionOS foreground/background PNGs are the corresponding app-icon assets.
-These are project artwork, not extracted game textures or official branding.
-The original app-art prompt is not retained in this source export; the older
-repository-header prompts below describe a different image.
+117 uses original cyan-and-violet plasma artwork for the app icon. The mobile
+icon is opaque; the visionOS icon has a transparent plasma foreground over
+an abstract teal background. These are generated project artwork, not extracted
+game textures, characters or official branding. The exact new generation and
+transparent-layer prompts are retained in [117-plasma-icon.json](117-plasma-icon.json).
 
-The exact reviewed paths and hashes are in `APP_ICON_ART` in
-`tools/check_repository_hygiene.py`. Internal asset filenames are retained
-when the visible product name changes.
+The launcher ships a native numeral **1** as its default game cover. Players
+can use the artwork menu to choose their own image or restore the default.
+Custom images are local preferences kept outside game data and saves, and
+are not bundled or uploaded by this project. Neither app asset catalog ships
+the previous helmet cover.
+
+The exact reviewed icon paths and hashes are in `APP_ICON_ART` in
+`tools/check_repository_hygiene.py`.
 
 ## Historical upstream repository header
 

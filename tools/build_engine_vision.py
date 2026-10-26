@@ -157,7 +157,7 @@ def direct_xros_build(inventory: dict[str, object], clean: bool, configuration: 
             return swift_result.returncode, None
 
         executable = product / "HaloVision"
-        frameworks = ["Foundation", "SwiftUI", "UIKit", "Metal", "MetalFX", "MetalKit", "QuartzCore",
+        frameworks = ["Foundation", "SwiftUI", "UIKit", "ImageIO", "Metal", "MetalFX", "MetalKit", "QuartzCore",
                       "CompositorServices", "ARKit", "GameController", "CoreHaptics", "AudioToolbox", "AVFAudio"]
         link_command = ["xcrun", "--sdk", "xros", "swiftc", "-target", target, "-sdk", sdk,
                         "-o", str(executable), *map(str, sorted(native_objects) + swift_objects),
@@ -181,9 +181,9 @@ def direct_xros_build(inventory: dict[str, object], clean: bool, configuration: 
         "CFBundleInfoDictionaryVersion": "6.0",
         "CFBundleName": "HaloVision",
         "CFBundlePackageType": "APPL",
-        "CFBundleShortVersionString": "1.0.24",
+        "CFBundleShortVersionString": "1.0.25",
         "CFBundleSupportedPlatforms": ["XROS"],
-        "CFBundleVersion": "124",
+        "CFBundleVersion": "125",
         "HaloBuildID": dt.datetime.now(dt.timezone.utc).isoformat(),
         "DTPlatformName": "xros",
         "GCSupportsControllerUserInteraction": True,

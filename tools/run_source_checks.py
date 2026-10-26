@@ -133,6 +133,8 @@ def run_frame_limit_sdk_check(temp):
 VISION = ROOT / 'native/EngineVision'
 PAD = ROOT / 'native/EnginePad'
 SWIFT_CHECKS = {
+    'library-artwork': (['-parse-as-library', '-framework', 'ImageIO', '-framework', 'UniformTypeIdentifiers'],
+                        [VISION / 'Sources/EngineLibraryArtwork.swift', VISION / 'Tests/LibraryArtworkValidation.swift']),
     'launch-preferences': (['-parse-as-library'],
                            [VISION / 'Sources/EngineLaunchPreferences.swift', VISION / 'Sources/EnginePresentationPreferences.swift',
                             VISION / 'Tests/LaunchPreferencesValidation.swift']),
@@ -604,6 +606,7 @@ def main():
             run_swift_check(temp, 'foveation-geometry')
             run_swift_check(temp, 'graphics-preferences')
             run_swift_check(temp, 'launch-preferences', args.sanitize)
+            run_swift_check(temp, 'library-artwork', args.sanitize)
             run_frame_limit_sdk_check(temp)
             run_swift_check(temp, 'pad-input-policy', args.sanitize)
             run_swift_check(temp, 'pad-input-session', args.sanitize)

@@ -35,6 +35,7 @@ private struct EnginePadLibraryView: View {
     @ObservedObject var engine: EnginePadModel
     @ObservedObject var cloudSaves: EngineCloudSaveStore
     @ObservedObject var input: EnginePadInputRouter
+    @ObservedObject private var artwork = EngineLibraryArtworkStore.shared
     @State private var showingImport = false
     @State private var showingSettings = false
     @State private var showingGame = false
@@ -52,7 +53,7 @@ private struct EnginePadLibraryView: View {
     /// Any app surface that can take controller focus away from Halo.
     private var appSurfaceVisible: Bool {
         showingSettings || showingCloudSaves || showingImport || showingDataStatus
-            || showingGameSettings || importError != nil
+            || showingGameSettings || importError != nil || artwork.isImporterPresented || artwork.errorMessage != nil
     }
     private var uiOwnsInput: Bool {
         EnginePadInputLease.uiOwnsInput(background: scenePhase == .background,
@@ -89,6 +90,7 @@ private struct EnginePadLibraryView: View {
                 ToolbarItem(placement: .principal) { libraryMenu }
             }
         }
+        .libraryArtworkImporter()
         .sheet(isPresented: $showingSettings) { settings }
         .sheet(isPresented: $showingCloudSaves) {
             NavigationStack {
@@ -204,6 +206,7 @@ private struct EnginePadLibraryView: View {
 
     private var libraryMenu: some View {
         Menu {
+            EngineLibraryArtworkActions()
             Button("Settings", systemImage: "slider.horizontal.3") { showingSettings = true }
             Button("Cloud Saves", systemImage: "icloud") { showingCloudSaves = true }
             Button("Game data", systemImage: "externaldrive") { showingDataStatus = true }

@@ -1,6 +1,12 @@
 # 117 validation
 
-## Current preview: build 124
+## Current preview: build 125
+
+Version 1.0.25 adds original plasma app icons, a numeral 1 default cover, and locally stored custom launcher artwork. The image-import fixture passes 21 checks covering orientation, downsampling, bounded decoding, metadata removal, persistence, invalid-input preservation and reset isolation. Full visionOS and iPad/iPhone Swift device-SDK typechecks pass.
+
+Both build 125 device-SDK packages compile and are signed. The Vision build freshly compiled all 60 native units and 55 Swift sources; the mobile build compiled 60 native units and 22 Swift sources. Build 125 is installed on Vision Pro, with all 55 existing save files verified unchanged, and was not automatically launched. The iPad/iPhone package is built but not installed. Physical launcher artwork, picker and controller interaction still require testing; source checks do not establish device acceptance. Custom artwork is local per device and is not part of cloud saves.
+
+## Previous preview: build 124
 
 Version 1.0.24 adds controller-aware gameplay prompts and maximum startup graphics. Fresh physical-device SDK builds compiled all 60 native units for both platforms, plus 54 Vision Swift sources and 21 mobile Swift sources. Both packages report 117 / 1.0.24 / 124, are signed, pass strict signature verification, and retain the existing private bundle/save identities. Recursive compiled-input hashes match the reviewed source.
 

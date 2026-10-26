@@ -1,5 +1,12 @@
 # Changelog
 
+## 117 artwork — 1.0.25 / build 125
+
+- Replaces character-based app icons with original cyan-and-violet plasma artwork on Vision Pro, iPad and iPhone.
+- Uses a simple numeral 1 for the default launcher cover, with no bundled helmet image.
+- Adds Change Artwork and Use Default Artwork through the card's artwork menu and the library menu. Custom images retain their full framing and are stored locally outside game saves.
+
+
 ## 117 controls and maximum graphics — 1.0.24 / build 124
 
 - Gameplay prompts name the active controller controls, such as Square for use/reload and Triangle for switching weapons. Accepted keyboard/mouse input restores key names; deliberate controller input selects controller names again. Existing bindings and the controls editor are unchanged.

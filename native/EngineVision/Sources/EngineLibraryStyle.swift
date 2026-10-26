@@ -129,32 +129,26 @@ struct EngineLibraryTitleLabel: View {
 }
 
 struct EngineLibraryCover: View {
+    @ObservedObject private var artwork = EngineLibraryArtworkStore.shared
+
     var body: some View {
         GeometryReader { proxy in
-            ZStack(alignment: .bottom) {
-                Color(red: 0.010, green: 0.040, blue: 0.056)
-                Image("MasterCheefArtwork")
-                    .resizable()
-                    .scaledToFill()
-                    .frame(width: proxy.size.width, height: proxy.size.height * 0.84)
-                    .clipped()
-                    .frame(maxHeight: .infinity, alignment: .top)
-                LinearGradient(stops: [.init(color: .clear, location: 0.43),
-                                       .init(color: .black.opacity(0.38), location: 0.67),
-                                       .init(color: .black.opacity(0.96), location: 1)],
-                               startPoint: .top, endPoint: .bottom)
-                VStack(spacing: 7) {
-                    Text("HALO")
-                        .font(.system(size: proxy.size.width * 0.18, weight: .light, design: .rounded))
-                        .tracking(proxy.size.width * 0.032)
-                    Text("COMBAT EVOLVED")
-                        .font(.system(size: max(10, proxy.size.width * 0.037), weight: .semibold))
-                        .tracking(2)
-                        .foregroundStyle(EngineLibraryTheme.accent)
+            ZStack {
+                if let image = artwork.image {
+                    Color.black.opacity(0.8)
+                    Image(uiImage: image)
+                        .resizable()
+                        .scaledToFit()
+                        .frame(width: proxy.size.width, height: proxy.size.height)
+                } else {
+                    LinearGradient(colors: [EngineLibraryTheme.raisedSurface, EngineLibraryTheme.background],
+                                   startPoint: .topLeading, endPoint: .bottomTrailing)
+                    Text("1")
+                        .font(.system(size: proxy.size.width * 0.68, weight: .ultraLight))
+                        .foregroundStyle(.white.opacity(0.95))
                 }
-                .foregroundStyle(.white)
-                .padding(.bottom, proxy.size.height * 0.08)
             }
+            .frame(width: proxy.size.width, height: proxy.size.height)
             .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
             .overlay {
                 RoundedRectangle(cornerRadius: 12, style: .continuous)
@@ -177,6 +171,19 @@ struct EngineLibraryGameCard<Status: View>: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
+        // The artwork menu is a sibling of the launch target, so opening it
+        // cannot also start the game. This matches the Dark Eco shelf affordance.
+        ZStack(alignment: .topTrailing) {
+            launchSurface
+            EngineLibraryArtworkMenu()
+                .padding(.top, coverWidth * 1.5 - 44)
+                .padding(.trailing, 12)
+        }
+        .contextMenu { EngineLibraryArtworkActions() }
+    }
+
+    @ViewBuilder
+    private var launchSurface: some View {
         #if os(visionOS)
         surface
             .contentShape([.interaction, .hoverEffect], RoundedRectangle(cornerRadius: 16, style: .continuous))

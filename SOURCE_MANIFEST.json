@@ -1,10 +1,10 @@
 {
-  "version": "1.0.24",
+  "version": "1.0.25",
   "formatVersion": 1,
   "license": "MIT for original project code; third-party and asset notices retained",
   "scope": "Source, documentation, generated app artwork and public configuration. Retail game content, translated executable output, private registration, saves, signed apps and runtime mod packs are excluded.",
-  "fileCount": 587,
-  "totalBytes": 18875979,
+  "fileCount": 586,
+  "totalBytes": 15178653,
   "files": [
     {
       "path": ".github/ISSUE_TEMPLATE/bug_report.yml",
@@ -18,8 +18,8 @@
     },
     {
       "path": ".github/workflows/source-checks.yml",
-      "bytes": 1953,
-      "sha256": "35897a2cbf92255ee30bc33ca168810a7e386c4f3024297da4dd14be9c359d03"
+      "bytes": 1985,
+      "sha256": "afaaddfeffac462e3189b437385a27536b85065a7e07d1c5bc88f3402bea00b1"
     },
     {
       "path": ".gitignore",
@@ -38,8 +38,8 @@
     },
     {
       "path": "CHANGELOG.md",
-      "bytes": 6772,
-      "sha256": "66ab617f629eda889886cd43341a33d4229c8445e6e447bc9b9cf11e10e50b4c"
+      "bytes": 7198,
+      "sha256": "96fb5f359e570fb38e8a0e63394d6f1c33c1548d81051a83ef334243830e0dd3"
     },
     {
       "path": "CONTRIBUTING.md",
@@ -64,7 +64,7 @@
     {
       "path": "VERSION",
       "bytes": 7,
-      "sha256": "5bc492603bd0397497c6e6471fed4bff5fb6542fce5e1a8683133a9a825cdea7"
+      "sha256": "79c1c2fe97b71ef1d5c5dd85eb7af3711a1a74dc05c1ca3aeb63dcc6c8d440d6"
     },
     {
       "path": "decompilation/c9acf0c46954/extra-function-entries.txt",
@@ -93,8 +93,8 @@
     },
     {
       "path": "docs/BUILDING.md",
-      "bytes": 14152,
-      "sha256": "48877fc8dee2cd9dc1207ccc83debe4a224c91f83a30337730c6c135d565a80f"
+      "bytes": 14160,
+      "sha256": "36c997ccc6b5f10561fd8c1816fb0f9c34f527811c4950764b740900c8d44d26"
     },
     {
       "path": "docs/COMPLETE_RELEASE.md",
@@ -133,13 +133,18 @@
     },
     {
       "path": "docs/VALIDATION.md",
-      "bytes": 15979,
-      "sha256": "23b4a9e38a20fd68e511eb3bb7e3d5f67a1bed6ae89d724635634f258eb31d18"
+      "bytes": 16948,
+      "sha256": "5461c8873f19f9aafa2f016587cc3945031cce263d23c36e973369e88a5d32ce"
+    },
+    {
+      "path": "docs/assets/117-plasma-icon.json",
+      "bytes": 2233,
+      "sha256": "f8f38f9a2c902e28de35e1252fe0a9346c78a587402a065f5518a34938925da5"
     },
     {
       "path": "docs/assets/README.md",
-      "bytes": 3597,
-      "sha256": "b4a3905d70d653f91924af97f6500b9c7ae379b966c31ff40e80de9f16ab19d2"
+      "bytes": 3736,
+      "sha256": "c73008cda248fc4819cb7c63235e081eee2f2c82c40e4e36c2cfb69d17bebb75"
     },
     {
       "path": "docs/assets/master-chef-header.png",
@@ -1672,29 +1677,19 @@
       "sha256": "bc908cf21dd448a5d227ced55e6cb517370270085d0c9cdbaf10a46c79847508"
     },
     {
-      "path": "native/EnginePad/Resources/Assets.xcassets/AppIcon.appiconset/Contents.json",
-      "bytes": 213,
-      "sha256": "3c8def2548b584919d38718457a16eb52c5b86bc9a2713f122b22807f2ae171a"
+      "path": "native/EnginePad/Resources/Assets.xcassets/AppIcon.appiconset/117-plasma.png",
+      "bytes": 1514647,
+      "sha256": "a2587c733a560988c29ca11ea2c55ef0d823a7fdffb6af7bd6377dd9a5a18713"
     },
     {
-      "path": "native/EnginePad/Resources/Assets.xcassets/AppIcon.appiconset/master-cheef-ipad.png",
-      "bytes": 1514539,
-      "sha256": "501b1036088625a09f99f8f5fc4d97c33e1be39eceb6e2efa0e92df7f468dc7d"
+      "path": "native/EnginePad/Resources/Assets.xcassets/AppIcon.appiconset/Contents.json",
+      "bytes": 206,
+      "sha256": "54e69c2adf5dab13388c729caa0fa22c9fd914c4f1872b74e2f7560bc3ce296a"
     },
     {
       "path": "native/EnginePad/Resources/Assets.xcassets/Contents.json",
       "bytes": 60,
       "sha256": "f5fb0e1f3a8142892ed092efb5955c1c2cc537003a89ad7bbdb9dade7fe8985f"
-    },
-    {
-      "path": "native/EnginePad/Resources/Assets.xcassets/MasterCheefArtwork.imageset/Contents.json",
-      "bytes": 164,
-      "sha256": "fdd7c741a2767b34f5ad6a21295f60686c224308581e62416495dfc1b51cb458"
-    },
-    {
-      "path": "native/EnginePad/Resources/Assets.xcassets/MasterCheefArtwork.imageset/master-cheef-artwork.png",
-      "bytes": 2206048,
-      "sha256": "c8ccbd515a02d5c74c24ba97692580d7b8787f856c41247923d55c3803a08426"
     },
     {
       "path": "native/EnginePad/Sources/EnginePad-Bridging-Header.h",
@@ -1753,8 +1748,8 @@
     },
     {
       "path": "native/EnginePad/Sources/MasterCheefPadApp.swift",
-      "bytes": 20827,
-      "sha256": "3785d5c2ad3cd6e94e38db39d8ba368f6fec4d48a3147a71a4591431ea80b6de"
+      "bytes": 21040,
+      "sha256": "a5d7e451ecd90bb92878c11620052fb12e4234149a0245406a679925815dfa99"
     },
     {
       "path": "native/EnginePad/Tests/EnginePadInputPolicyValidation.swift",
@@ -1768,8 +1763,8 @@
     },
     {
       "path": "native/EnginePad/project.yml",
-      "bytes": 4935,
-      "sha256": "8d624bd710186cbb0740d09bee0ac12f315d4c7adbac8e4aa76cb03197d45905"
+      "bytes": 5031,
+      "sha256": "a87a8eecba26af17f31f84355ba6dd24bca5254493e1692c3a804d4c60970b14"
     },
     {
       "path": "native/EngineReuse/engine_arm64_fenv_prototype.h",
@@ -1822,14 +1817,14 @@
       "sha256": "dba81a0a7b18a3063b64fd67b81f5e79cca8fd1b1353008ffa91ccdbfd7994ad"
     },
     {
-      "path": "native/EngineVision/Resources/Assets.xcassets/AppIcon.solidimagestack/Back.solidimagestacklayer/Content.imageset/Contents.json",
-      "bytes": 190,
-      "sha256": "f115bcf02aa77c0f8495be20a7b9d3b19f6882834789207a4b86ebd4a235e868"
-    },
-    {
-      "path": "native/EngineVision/Resources/Assets.xcassets/AppIcon.solidimagestack/Back.solidimagestacklayer/Content.imageset/master-cheef-icon-background.png",
+      "path": "native/EngineVision/Resources/Assets.xcassets/AppIcon.solidimagestack/Back.solidimagestacklayer/Content.imageset/117-plasma-background.png",
       "bytes": 982963,
       "sha256": "55d760f98712d0e112389116c564739d769bc3c5235e648b6bc5a4eb02a4909b"
+    },
+    {
+      "path": "native/EngineVision/Resources/Assets.xcassets/AppIcon.solidimagestack/Back.solidimagestacklayer/Content.imageset/Contents.json",
+      "bytes": 183,
+      "sha256": "c76a2bd1c6a547cce6dcb101bc1707ab841009d91937a85340a2d7090592f794"
     },
     {
       "path": "native/EngineVision/Resources/Assets.xcassets/AppIcon.solidimagestack/Back.solidimagestacklayer/Contents.json",
@@ -1842,14 +1837,14 @@
       "sha256": "890a163d1288705517fbd04c952fa28aabb39fdf24b4d6d2b451fe5a4ee08587"
     },
     {
-      "path": "native/EngineVision/Resources/Assets.xcassets/AppIcon.solidimagestack/Front.solidimagestacklayer/Content.imageset/Contents.json",
-      "bytes": 190,
-      "sha256": "cc7901c0b784b871d94d40bf0cd2bb16d6b9ed8b47a3c8fbf5406552e592d53d"
+      "path": "native/EngineVision/Resources/Assets.xcassets/AppIcon.solidimagestack/Front.solidimagestacklayer/Content.imageset/117-plasma-foreground.png",
+      "bytes": 1514022,
+      "sha256": "fde13617981ce448f8b43b29d4e013856cbce6ff6f2e469fb7c9b217f5bdace7"
     },
     {
-      "path": "native/EngineVision/Resources/Assets.xcassets/AppIcon.solidimagestack/Front.solidimagestacklayer/Content.imageset/master-cheef-icon-foreground.png",
-      "bytes": 821244,
-      "sha256": "b55fef0e4efc046a15a328ed82c5ea89f094181c7b030cacc5c573bb6aa500d8"
+      "path": "native/EngineVision/Resources/Assets.xcassets/AppIcon.solidimagestack/Front.solidimagestacklayer/Content.imageset/Contents.json",
+      "bytes": 183,
+      "sha256": "880ef4329dfa6456c7db9c7d8e4f0fd2c9a5e29271da18f032aba4bbe7a73f18"
     },
     {
       "path": "native/EngineVision/Resources/Assets.xcassets/AppIcon.solidimagestack/Front.solidimagestacklayer/Contents.json",
@@ -1860,16 +1855,6 @@
       "path": "native/EngineVision/Resources/Assets.xcassets/Contents.json",
       "bytes": 60,
       "sha256": "f5fb0e1f3a8142892ed092efb5955c1c2cc537003a89ad7bbdb9dade7fe8985f"
-    },
-    {
-      "path": "native/EngineVision/Resources/Assets.xcassets/MasterCheefArtwork.imageset/Contents.json",
-      "bytes": 164,
-      "sha256": "fdd7c741a2767b34f5ad6a21295f60686c224308581e62416495dfc1b51cb458"
-    },
-    {
-      "path": "native/EngineVision/Resources/Assets.xcassets/MasterCheefArtwork.imageset/master-cheef-artwork.png",
-      "bytes": 2206048,
-      "sha256": "c8ccbd515a02d5c74c24ba97692580d7b8787f856c41247923d55c3803a08426"
     },
     {
       "path": "native/EngineVision/Resources/PrivacyInfo.xcprivacy",
@@ -2037,14 +2022,19 @@
       "sha256": "943e75c406cf07cda4a6a12a2c12cd10bf165d50c05790f1e406bedf6b046ab7"
     },
     {
+      "path": "native/EngineVision/Sources/EngineLibraryArtwork.swift",
+      "bytes": 10476,
+      "sha256": "3d100ccd0bcf47dcb4c5e355e2906be803ed22b16f445855c04f2011e3bc3e15"
+    },
+    {
       "path": "native/EngineVision/Sources/EngineLibraryStyle.swift",
-      "bytes": 11583,
-      "sha256": "8ecae3bd1cf1a7fd084ad4ac6a7d3427149631da216a70366648e5e3d1104f3c"
+      "bytes": 11638,
+      "sha256": "018862fa4312dbde815f760d9ca18eac643fdbb13bb8b88ab3b075012194fadb"
     },
     {
       "path": "native/EngineVision/Sources/EngineLibraryView.swift",
-      "bytes": 27586,
-      "sha256": "50f5a268bc5c8efb3308ba994e71b994af3d1e8acc77579d03b0695462906b0a"
+      "bytes": 28488,
+      "sha256": "83dd2159e6d505bead392da7648f808e59167936d6060fd14b79f426bb8f5b25"
     },
     {
       "path": "native/EngineVision/Sources/EngineLiveSettingsView.swift",
@@ -2327,6 +2317,11 @@
       "sha256": "36704da4ed2907d980649cefa0640567f85841f3937e31e9d05044649f9827dc"
     },
     {
+      "path": "native/EngineVision/Tests/LibraryArtworkValidation.swift",
+      "bytes": 6679,
+      "sha256": "9ec06cc00e64119ec6a1345b8a9047d4b9d977fe68a40b6797d1fcbf8576834b"
+    },
+    {
       "path": "native/EngineVision/Tests/MenuInputProbe.m",
       "bytes": 64044,
       "sha256": "8da673e24aa41477ca1cdbb0dd6192afa5b598b9b09b20e1012c167ed1b05ecf"
@@ -2488,8 +2483,8 @@
     },
     {
       "path": "native/EngineVision/project.yml",
-      "bytes": 4940,
-      "sha256": "aecb0fa08941b7b0aaa5c67db2a6de7eb3defde4d129f25cd51cd7399d592c3b"
+      "bytes": 4971,
+      "sha256": "2433556996fe0ce50d56e61c27dede3231b0136da7df837899edd639034e8cfa"
     },
     {
       "path": "native/Tests/EngineRuntimeContract.c",
@@ -2733,13 +2728,13 @@
     },
     {
       "path": "tools/build_engine_ipad.py",
-      "bytes": 25794,
-      "sha256": "4bfacd818cb2fc3c6a4cc20077087f265ff1552702457b6182fce715235916f6"
+      "bytes": 25835,
+      "sha256": "1c58ae81e17460783d6fc58f6ad3eebca6af62ed5a22a365ae8ec4d48f9d3137"
     },
     {
       "path": "tools/build_engine_vision.py",
-      "bytes": 16846,
-      "sha256": "ab7b5412f0020310b95c3dfeb0c46c97576b0736cec08fc3b21884e234dd7c8e"
+      "bytes": 16857,
+      "sha256": "e710abf20a151fe62d52b8dcbf062ab39f23ff9000326fea8b33471f952a9982"
     },
     {
       "path": "tools/build_engine_vision_simulator.py",
@@ -2758,8 +2753,8 @@
     },
     {
       "path": "tools/check_repository_hygiene.py",
-      "bytes": 4849,
-      "sha256": "95cbfba5b28e61f6ce99f0b3aa6dd85db3a97648cd77c39f5569bda56530bdf6"
+      "bytes": 4468,
+      "sha256": "0e3bbe0d11d72bda1cd154032eab6173dff552a497b53313c7ec62ac44641b3c"
     },
     {
       "path": "tools/engine_reuse/decode.py",
@@ -2868,8 +2863,8 @@
     },
     {
       "path": "tools/run_source_checks.py",
-      "bytes": 43923,
-      "sha256": "cf1b2601ac26b449eaa306a5687666870f398d8014ee84852137a2f5c69338d3"
+      "bytes": 44226,
+      "sha256": "85c589c653b27d62a99e2d6b400f958a46a26cee7235d69037748de142550536"
     },
     {
       "path": "tools/setup_halo.py",
@@ -2879,7 +2874,7 @@
     {
       "path": "tools/test_build_engine_ipad.py",
       "bytes": 14453,
-      "sha256": "c4b90405273d92e6224c6aca9b9cd900a635ed03b3fb6f5a1920ded54d6f2800"
+      "sha256": "4babdabf1148565d79c10b768acdbb12dc77560cd5d2639a44a15b7f4164a85e"
     },
     {
       "path": "tools/test_censhine_import.py",

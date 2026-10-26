@@ -96,8 +96,8 @@ Set the application's bundle identifier to one you control, select your
 team, and enable automatic signing in Xcode. The public default,
 `org.example.halovision`, is a placeholder. The CLI normally performs unsigned
 builds; an Xcode development run supplies a profile for your account.
-The project version is 1.0.24 (build 124), adding controller-aware gameplay
-prompts and maximum startup graphics on Vision Pro and mobile. See
+The project version is 1.0.25 (build 125), adding original plasma icons and
+a numeral cover with player-selected artwork on Vision Pro and mobile. See
 [validation](VALIDATION.md) for build and physical-device acceptance.
 Generated app artwork is included;
 see [artwork provenance](assets/README.md).

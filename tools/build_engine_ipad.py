@@ -37,14 +37,14 @@ PROTECTED_OUTPUTS = [REPO / ".setup/MasterCheefIPadCloud-20261020"]
 DEVICE_FAMILIES = [1, 2]  # iPhone and iPad share one bundle identifier and cloud container
 DEFAULT_DISPLAY_NAME = "117"  # visible name only; bundle/executable/container stay technical
 SHARED_SWIFT = ["EngineAssets.swift", "EngineFrameView.swift", "EngineFrameTexture.swift",
-                "EngineLibraryStyle.swift",
+                "EngineLibraryStyle.swift", "EngineLibraryArtwork.swift",
                 "EngineHaptics.swift", "EngineAboutView.swift", "EngineGraphicsModsView.swift",
                 "EngineSaveArchive.swift", "EngineCloudSaves.swift", "EngineCloudSavesView.swift",
                 "EngineLaunchPreferences.swift"]
 HOST_C = ["host.c", "shims_kernel32.c", "shims_misc.c", "winsock.c", "directsound.c", "directsound_mixer.c",
           "vorbis_shim.c", "d3d9.c", "texture_decode.c", "metalshader.c", "dinput8.c", "ddraw.c",
           "resources.c", "overrides.c", "threading.c", "pointer.c", "haptics.c", "halo_settings.c"]
-FRAMEWORKS = ["Foundation", "SwiftUI", "UIKit", "Metal", "MetalFX", "MetalKit", "QuartzCore",
+FRAMEWORKS = ["Foundation", "SwiftUI", "UIKit", "ImageIO", "Metal", "MetalFX", "MetalKit", "QuartzCore",
               "GameController", "CoreHaptics", "AudioToolbox", "AVFAudio", "UniformTypeIdentifiers"]
 
 

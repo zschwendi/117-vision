@@ -13,6 +13,7 @@ struct EngineContentView: View {
     @ObservedObject var engine: EngineRuntimeModel
     @ObservedObject var immersive: EngineImmersiveSession
     @ObservedObject private var controller = EngineAppControllerNavigation.shared
+    @ObservedObject private var artwork = EngineLibraryArtworkStore.shared
     @AppStorage("HaloPreferredPresentation") private var preferredPresentation = EngineDisplayMode.immersive.rawValue
     @State private var showingImporter = false
     @State private var importAlert: String?
@@ -30,6 +31,7 @@ struct EngineContentView: View {
             .navigationTitle(session.destination == .window ? "Halo: Combat Evolved" : "Library")
             .toolbar { toolbar }
         }
+        .libraryArtworkImporter()
         .tint(EngineLibraryTheme.accent)
         .preferredColorScheme(.dark)
         .handlesGameControllerEvents(matching: .gamepad)
@@ -82,7 +84,9 @@ struct EngineContentView: View {
         }
         .senseControllerNavigation(controllerItems, enabled: session.destination == .library && activeSheet == nil,
                                    back: {
-                                       if importAlert != nil { importAlert = nil }
+                                       if artwork.errorMessage != nil { artwork.errorMessage = nil }
+                                       else if artwork.isImporterPresented { artwork.isImporterPresented = false }
+                                       else if importAlert != nil { importAlert = nil }
                                        else if showingImporter { showingImporter = false }
                                        else if engine.isActive && session.canPlay { session.play(in: displayMode) }
                                    })
@@ -121,6 +125,7 @@ struct EngineContentView: View {
                     Button("Halo Menu", systemImage: "slider.horizontal.3") { session.showControls() }
                 }
                 Button("Settings", systemImage: "gearshape") { session.showSettings() }
+                if session.destination == .library { EngineLibraryArtworkActions() }
                 Button("Game Data", systemImage: "externaldrive") { activeSheet = .gameData }
                 Button("Controller", systemImage: "gamecontroller") { activeSheet = .controller }
                 Button("Cloud Saves", systemImage: "icloud") { activeSheet = .cloudSaves }
@@ -224,6 +229,12 @@ struct EngineContentView: View {
     }
 
     private var controllerItems: [EngineControllerMenuItem] {
+        if artwork.errorMessage != nil {
+            return [.init(id: "library.modal", title: "Dismiss artwork error", activate: { artwork.errorMessage = nil })]
+        }
+        if artwork.isImporterPresented {
+            return [.init(id: "library.modal", title: "Cancel artwork import", activate: { artwork.isImporterPresented = false })]
+        }
         if importAlert != nil {
             return [.init(id: "library.modal", title: "Dismiss import error", activate: { importAlert = nil })]
         }
@@ -233,6 +244,7 @@ struct EngineContentView: View {
         return [
             .init(id: "library.play", title: primaryTitle, enabled: primaryEnabled, activate: activateCard),
             .init(id: "library.settings", title: "Settings", activate: { session.showSettings() }),
+            .init(id: "library.artwork", title: "Change Artwork", enabled: !artwork.isBusy, activate: { artwork.chooseArtwork() }),
             .init(id: "library.mode", title: "Play in", value: displayMode.label,
                   enabled: !session.quitBlocksPresentation,
                   activate: cycleDisplayMode, adjust: { _ in cycleDisplayMode() })

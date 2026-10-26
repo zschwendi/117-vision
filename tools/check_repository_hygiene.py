@@ -19,13 +19,7 @@ DOCUMENTATION_ART = {
 }
 # Original generated app artwork is also admitted only at its reviewed path and
 # exact digest. Other image files remain subject to the binary-file guard.
-APP_ICON_ART = {
-    'native/EnginePad/Resources/Assets.xcassets/MasterCheefArtwork.imageset/master-cheef-artwork.png': 'c8ccbd515a02d5c74c24ba97692580d7b8787f856c41247923d55c3803a08426',
-    'native/EngineVision/Resources/Assets.xcassets/MasterCheefArtwork.imageset/master-cheef-artwork.png': 'c8ccbd515a02d5c74c24ba97692580d7b8787f856c41247923d55c3803a08426',
-    'native/EnginePad/Resources/Assets.xcassets/AppIcon.appiconset/master-cheef-ipad.png': '501b1036088625a09f99f8f5fc4d97c33e1be39eceb6e2efa0e92df7f468dc7d',
-    'native/EngineVision/Resources/Assets.xcassets/AppIcon.solidimagestack/Back.solidimagestacklayer/Content.imageset/master-cheef-icon-background.png': '55d760f98712d0e112389116c564739d769bc3c5235e648b6bc5a4eb02a4909b',
-    'native/EngineVision/Resources/Assets.xcassets/AppIcon.solidimagestack/Front.solidimagestacklayer/Content.imageset/master-cheef-icon-foreground.png': 'b55fef0e4efc046a15a328ed82c5ea89f094181c7b030cacc5c573bb6aa500d8',
-}
+APP_ICON_ART = {'native/EnginePad/Resources/Assets.xcassets/AppIcon.appiconset/117-plasma.png': 'a2587c733a560988c29ca11ea2c55ef0d823a7fdffb6af7bd6377dd9a5a18713', 'native/EngineVision/Resources/Assets.xcassets/AppIcon.solidimagestack/Front.solidimagestacklayer/Content.imageset/117-plasma-foreground.png': 'fde13617981ce448f8b43b29d4e013856cbce6ff6f2e469fb7c9b217f5bdace7', 'native/EngineVision/Resources/Assets.xcassets/AppIcon.solidimagestack/Back.solidimagestacklayer/Content.imageset/117-plasma-background.png': '55d760f98712d0e112389116c564739d769bc3c5235e648b6bc5a4eb02a4909b'}
 BAD_SUFFIX = {'.exe', '.dll', '.map', '.iso', '.ipa', '.p12', '.p8', '.pfx', '.pem', '.key',
               '.mobileprovision', '.provisionprofile', '.o', '.a', '.dylib', '.so', '.pyc',
               '.zip', '.tpf', '.hvt', '.hvs', '.mc-save', '.bgra', '.mov', '.mp4', '.jsonl', '.log', '.reg'}

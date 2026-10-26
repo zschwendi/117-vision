@@ -221,6 +221,35 @@ int halo_sense_weapon_pose(unsigned hand, float position[3], float forward[3], f
  * source replacement or tracking loss before it can fire. */
 void halo_sense_filter_gamepad(HostGCSnapshot *snapshot);
 
+/* Which branch halo_sense_filter_gamepad would take for a Sense pair right
+ * now, for native prompt hints (input_prompt_label.h). Read only: unlike the
+ * filter's freshness helpers it never invalidates, disarms or cancels
+ * anything, and it never changes what any control does.
+ *   PASSTHROUGH  tracking off or no session: the pad is used unchanged
+ *   SEATED       native seat controls: L1 and L2 withheld
+ *   SCOPE        scoped with fresh tracking: L1, L2 and the right stick withheld
+ *   SCOPE_HEAD   scoped after hand loss: Menu, R3 and R1 only
+ *   TRACKED      on foot with fresh tracking: L1, L2 and the right stick
+ *                withheld; Quick gestures may own centered Create
+ *   USE_ONLY     fresh tracking, unsupported gameplay: Use (Square) and Menu
+ *   MENU_ONLY    lost tracking: Menu only
+ * gestures_own_create: TRACKED with Quick gestures on and their delivery
+ * context live, so centered Create is the gesture clutch and Create + R3 is
+ * the scoreboard (sense_pose.inc filter, sense_gesture.inc).
+ * grenade_clutch: holding L1, a throwing motion and release requests the
+ * original grenade throw (sense_throw_input.inc): head/pad ownership is fresh
+ * and gameplay is supported, so the release pulse can be delivered. */
+enum {
+    HALO_SENSE_PROMPT_NONE = 0, HALO_SENSE_PROMPT_PASSTHROUGH, HALO_SENSE_PROMPT_SEATED,
+    HALO_SENSE_PROMPT_SCOPE, HALO_SENSE_PROMPT_SCOPE_HEAD, HALO_SENSE_PROMPT_TRACKED,
+    HALO_SENSE_PROMPT_USE_ONLY, HALO_SENSE_PROMPT_MENU_ONLY
+};
+typedef struct {
+    int context, gestures_own_create, grenade_clutch;
+    uint64_t controller_generation;
+} HaloSensePromptContext;
+int halo_sense_prompt_context(HaloSensePromptContext *out);
+
 #ifdef __cplusplus
 }
 #endif

@@ -159,7 +159,7 @@ struct EngineGraphicsReport {
 struct EngineGraphicsQualityView: View {
     @ObservedObject var model: EngineGraphicsQualityModel
     @AppStorage(EngineSceneUpscaleChoice.preferenceKey) private var upscale = EngineSceneUpscaleChoice.off.rawValue
-    @AppStorage("HaloRenderResolution") private var resolution = "2048x1536"
+    @AppStorage(EngineLaunchPreferences.visionResolutionKey) private var resolution = EngineLaunchPreferences.visionHighestResolution
     @Environment(\.dismiss) private var dismiss
 
     var body: some View {

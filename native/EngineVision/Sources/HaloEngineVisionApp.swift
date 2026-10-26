@@ -10,6 +10,13 @@ struct HaloEngineVisionApp: App {
     @StateObject private var session = EngineAppSession()
     @Environment(\.scenePhase) private var scenePhase
 
+    /// Before SwiftUI creates the session, whose settings models read the
+    /// saved presentation, and long before the engine reads launch graphics.
+    init() {
+        let outcome = EngineLaunchPreferences.migrate(.vision)
+        if outcome.applied { NSLog("[launch-graphics] highest settings applied once; presentation: %@", outcome.presentation.rawValue) }
+    }
+
     var body: some Scene {
         WindowGroup(EngineLibraryTheme.productName, id: EngineAppSession.libraryWindowID) {
             EngineContentView(session: session, assets: session.assets, engine: session.engine, immersive: session.immersive)

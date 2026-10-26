@@ -126,7 +126,7 @@ class MobileIdentityTests(unittest.TestCase):
 
     def test_versions_follow_xcode_target_and_reject_malformed_overrides(self):
         marketing, build = project_versions()
-        self.assertEqual((marketing, build), ("1.0.23", "123"))
+        self.assertEqual((marketing, build), ("1.0.24", "124"))
         validate_versions(marketing, build)
         args = build_parser().parse_args(["--build-number", "122", "--marketing-version", "1.0.22"])
         self.assertEqual((args.build_number, args.marketing_version), ("122", "1.0.22"))

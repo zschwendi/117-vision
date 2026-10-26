@@ -1,5 +1,5 @@
 /* Halo's original time update 004C9F90 (lifted, read-only generated source)
- * with the iOS frame-rate hook (frame_limit_hooks.inc), on a fake QPC/Sleep
+ * with the iOS/visionOS frame-rate hook (frame_limit_hooks.inc), on a fake QPC/Sleep
  * clock. Shows what the original does with the saved throttle on and off,
  * then that the hook with the throttle saved on produces exactly the
  * original's own unthrottled result (all guest memory, CPU and x87 state,
@@ -176,7 +176,7 @@ int main(void) {
         assert(got.memory[0x006894BAu] == 0);
         free(want.memory); free(got.memory); checked++;
     }
-    {   /* Disabled (a 30 fps request, or not iOS): the original, throttled. */
+    {   /* Disabled (a 30 fps request, Original on visionOS, or the Mac): the original, throttled. */
         Result want = run(&throttled, T, T + work, 0), got = run(&throttled, T, T + work, 0);
         assert(same(&want, &got) && got.now - T >= 33333333ull);
         free(want.memory); free(got.memory); checked++;
@@ -214,7 +214,7 @@ int main(void) {
 #if ENGINE_IOS_HOOKS
     assert(engine_hooked(0x004C9F90u));
 #else
-    assert(!engine_hooked(0x004C9F90u));   /* macOS/visionOS: the direct call, unchanged */
+    assert(!engine_hooked(0x004C9F90u));   /* macOS: the direct call, unchanged */
 #endif
     free(engine_flat_base);
     printf("PASS frame limit on Halo's original 004C9F90: saved throttle enforces 1/30 s, lifted hook == original unthrottled "

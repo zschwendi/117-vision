@@ -578,6 +578,25 @@ void enginevision_copy_status(char *destination, size_t capacity) {
     os_unfair_lock_lock(&runtime_lock); snprintf(destination, capacity, "%s", runtime_status); os_unfair_lock_unlock(&runtime_lock);
 }
 
+#if TARGET_OS_VISION
+#include "frame_limit.h"
+/* What the launch frame-rate choice (enginevision_start) asked of Halo's time
+ * update, and what the hook has done since. Counters, not a frame rate. */
+bool enginevision_frame_limit_info(EngineVisionFrameLimitInfo *out) {
+    if (!out) return false;
+    HaloFrameLimitStats limit; host_frame_limit_stats(&limit);
+    memset(out, 0, sizeof *out);
+    out->lifts_throttle = limit.enabled;
+    out->calls = limit.calls; out->lifted = limit.lifted;
+    out->unthrottled = limit.reasons[HALO_FRAME_LIMIT_WHY_UNTHROTTLED];
+    out->cinematic = limit.reasons[HALO_FRAME_LIMIT_WHY_CINEMATIC];
+    out->timedemo = limit.reasons[HALO_FRAME_LIMIT_WHY_TIMEDEMO];
+    out->declined = limit.reasons[HALO_FRAME_LIMIT_WHY_CONSTANTS];
+    out->floor_waits = limit.floor_waits; out->floor_wait_ns = limit.floor_wait_ns;
+    return true;
+}
+#endif
+
 #if ENGINEVISION_MOBILE_GRAPHICS
 #include "frame_limit.h"
 /* ---- iPad/iPhone launch graphics ---------------------------------------------
@@ -1033,8 +1052,10 @@ int enginevision_start(const char *game_root) {
      * doubled the number of world passes, so the default stepped down again.
      * Removing the duplicate view the game asked for then cut engine work per
      * pass four-fold, and pixels cost the GPU rather than the engine that
-     * limits this port, so the mode moves back up to 2048x1536 to spend the
-     * recovered budget on sharpness. HALO_VIDMODE overrides it. */
+     * limits this port, so the mode moved back up to 2048x1536 to spend the
+     * recovered budget on sharpness. Build124 starts at the settings
+     * window's highest choice, 2560x1920 (EngineLaunchPreferences.swift);
+     * a player's lower saved choice still applies. HALO_VIDMODE overrides it. */
     { const char *mode = getenv("HALO_VIDMODE"); char buf[64]; char chosen[32] = "";
       /* The settings window stores a resolution the player picked; it takes
        * effect at the next launch because the engine fixes its back buffer
@@ -1043,7 +1064,7 @@ int enginevision_start(const char *game_root) {
        * 1280x960, and whether pixels are the reason is exactly what a
        * resolution the player can change without a rebuild will tell. */
       NSString *stored = [[NSUserDefaults standardUserDefaults] stringForKey:@"HaloRenderResolution"];
-      unsigned output_w = 2048, output_h = 1536;
+      unsigned output_w = 2560, output_h = 1920;
       if (stored.length && stored.length < sizeof chosen) {
           unsigned w = 0, h = 0;
           if (sscanf(stored.UTF8String, "%ux%u", &w, &h) == 2 && w >= 640 && h >= 480 && w <= 4096 && h <= 3072)
@@ -1067,8 +1088,25 @@ int enginevision_start(const char *game_root) {
           snprintf(size, sizeof size, "%ux%u", render_w, render_h); setenv("HALO_SCENE_RENDER", size, 1);
           snprintf(chosen, sizeof chosen, "%u,%u,60", render_w, render_h);
       }
-      snprintf(buf, sizeof buf, "-vidmode %s", mode && mode[0] ? mode : (chosen[0] ? chosen : "2048,1536,60"));
+      snprintf(buf, sizeof buf, "-vidmode %s", mode && mode[0] ? mode : (chosen[0] ? chosen : "2560,1920,60"));
       setenv("HALO_CMDLINE_EXTRA", buf, 0); }
+    /* Frame rate (HaloVisionFrameRate, next launch). Maximum, the default,
+     * lifts the profile's saved 30 fps limiter at Halo's time update for each
+     * call (frame_limit.h): cinematics and timedemo keep Halo's cadence, the
+     * dt floor keeps game time real, and the saved byte is never changed.
+     * Original limiter leaves Halo's own choice as it is (a profile already
+     * unthrottled stays so; nothing forces 30 fps). HALO_FRAME_LIMIT_LIFT=0/1
+     * overrides. The compositor still sets the display rate. Decided once
+     * per process, so a changed setting waits for the next launch. */
+    { static dispatch_once_t once;
+      dispatch_once(&once, ^{
+        NSString *rate = [[NSUserDefaults standardUserDefaults] stringForKey:@"HaloVisionFrameRate"];
+        const char *lift = getenv("HALO_FRAME_LIMIT_LIFT");
+        const int lifted = lift && lift[0] ? lift[0] != '0' : ![rate isEqualToString:@"original"];
+        host_frame_limit_configure(lifted);
+        fprintf(stderr, "[frame-limit] %s (%s)\n", lifted ? "Maximum: lifting Halo's 30 fps limit requested" : "Original limiter: Halo's limiter unchanged",
+                lift && lift[0] ? "HALO_FRAME_LIMIT_LIFT" : rate.length ? rate.UTF8String : "default");
+      }); }
 #endif
 #if ENGINEVISION_MOBILE_GRAPHICS
     /* The launcher may already have fixed the plan; otherwise fix it now,

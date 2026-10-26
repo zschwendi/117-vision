@@ -39,7 +39,8 @@ DEFAULT_DISPLAY_NAME = "117"  # visible name only; bundle/executable/container s
 SHARED_SWIFT = ["EngineAssets.swift", "EngineFrameView.swift", "EngineFrameTexture.swift",
                 "EngineLibraryStyle.swift",
                 "EngineHaptics.swift", "EngineAboutView.swift", "EngineGraphicsModsView.swift",
-                "EngineSaveArchive.swift", "EngineCloudSaves.swift", "EngineCloudSavesView.swift"]
+                "EngineSaveArchive.swift", "EngineCloudSaves.swift", "EngineCloudSavesView.swift",
+                "EngineLaunchPreferences.swift"]
 HOST_C = ["host.c", "shims_kernel32.c", "shims_misc.c", "winsock.c", "directsound.c", "directsound_mixer.c",
           "vorbis_shim.c", "d3d9.c", "texture_decode.c", "metalshader.c", "dinput8.c", "ddraw.c",
           "resources.c", "overrides.c", "threading.c", "pointer.c", "haptics.c", "halo_settings.c"]

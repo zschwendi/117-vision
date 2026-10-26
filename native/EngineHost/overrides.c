@@ -180,6 +180,7 @@ typedef struct { uint32_t addr; HostShim fn; const char *name; } Override;
 #endif
 #include "model_capture_hooks.inc"
 #include "audio_ownership_trace.inc"
+#include "input_prompt_hooks.inc"
 #include "native_leaves.h"
 #include "native_gather.h"
 #include "native_gather_tree.h"
@@ -278,6 +279,8 @@ int engine_dispatch_override(EngineCPU *cpu, uint32_t address) {
     if (host_sense_body_dispatch(cpu, address)) return 1;
     if (host_sense_world_model_dispatch(cpu, address)) return 1;
     if (host_panorama_dispatch(cpu, address)) return 1;
+    /* Gameplay prompt key names -> the controller control that sends them. */
+    if (host_prompt_dispatch(cpu, address)) return 1;
     host_a10_gamepad_boundary(cpu, address);
     host_a10_boundary(cpu, address);
     host_hsc_trace_boundary(cpu, address);

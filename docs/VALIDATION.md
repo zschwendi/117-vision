@@ -1,14 +1,26 @@
 # 117 validation
 
-## Current preview
+## Current preview: build 124
+
+Version 1.0.24 adds controller-aware gameplay prompts and maximum startup graphics. Fresh physical-device SDK builds compiled all 60 native units for both platforms, plus 54 Vision Swift sources and 21 mobile Swift sources. Both packages report 117 / 1.0.24 / 124, are signed, pass strict signature verification, and retain the existing private bundle/save identities. Recursive compiled-input hashes match the reviewed source.
+
+Build 124 is installed on the physical Vision Pro. A device query confirms its name and version. Two matching save backups were captured immediately before installation; a post-install readback confirms all 55 save files remain byte-identical. The app was not launched. The iPad/iPhone package is built locally but has not been installed; no physical iPad interaction occurred for this update.
+
+The new prompt tests cover input provenance, controller metadata, bounded labels, Sense context and accepted device ingress. Normal and sanitizer runs pass; the original formatter fixture passes 39 ABI/output checks using privately generated input and explicitly skips without it. An independent review checked the formatter's callers, buffer bounds, mappings and final merged dispatch routes. Platform compilation covers macOS, iPhoneOS and xrOS. Spatial metadata tests require macOS/SDK 26 or later and explicitly skip on older CI hosts.
+
+Launch-preference tests verify the one-time maximum migration, preservation of unrelated preferences and later lower choices. The original timing fixture verifies the limiter hook keeps simulation time, profile state and cinematic/timedemo behavior; actual iOS and Vision SDK routing checks confirm the hook is enabled for those builds and the Mac keeps its direct path. All 22 mobile builder tests pass.
+
+Visible prompts, maximum-setting stability, sustained FPS and new control feel still require a physical gameplay test. Maximum is a requested configuration, not a measured rate. Mobile Magic Keyboard/touch gameplay and the live cross-device iCloud roundtrip remain unverified.
+
+## Previous mobile package: build 123
 
 Version 1.0.23 (build 123) adds iPad/iPhone keyboard, mouse, trackpad and touch aiming, Native resolution and display-maximum frame-rate requests. A fresh iPhoneOS device-SDK build compiled all 60 native units and 20 Swift sources, linked and signed successfully. The package reports 117 / 1.0.23 / 123, includes both indirect-input and high-refresh opt-ins, and passes strict signature verification. Compiled input hashes were checked against the final source. This is a local package, not a device test.
 
 Focused source checks cover input ownership, stale-event fencing, queued clicks, pointer capture, two-finger secondary clicks, presentation transitions, graphics admission, display-rate changes and allocation rollback. The native and Swift input fixtures and graphics checks pass; native checks also pass with ASan/UBSan. The original timing-function fixture verifies the mobile rate hook preserves elapsed game time, cinematic/timedemo behavior and the saved limiter setting; that fixture explicitly skips without privately generated game code. Synthetic Metal checks exercise the resize/readback path. All 22 mobile builder tests pass.
 
-Build 123 has not been installed or launched on a device. Magic Keyboard pointer capture, tap settings, aiming feel, sustained performance at Native/Display maximum, and mobile gameplay still need physical acceptance. The shared visionOS source is SDK-checked; no build 123 Vision Pro package or installation is claimed. The most recent installed build recorded below remains Build121, whose display name is Keyship. Existing save restoration is verified below; live iCloud delivery remains unverified.
+Build 123 has not been installed or launched on a device. Magic Keyboard pointer capture, tap settings, aiming feel, sustained performance at Native/Display maximum, and mobile gameplay still need physical acceptance. The shared visionOS source is SDK-checked; no build 123 Vision Pro package or installation is claimed. At build 123 publication, the latest installed build was Build121, whose display name is Keyship. Build 124 above is the current installation. Existing save restoration is verified below; live iCloud delivery remains unverified.
 
-Build 122 was the source-only rename to 117 / zschwendi/117-vision. Its public GitHub source workflow passed. The Build120/Build121 evidence below is historical and unchanged.
+The public GitHub source workflows for builds 122 and 123 passed. Build 122 was the source-only rename to 117 / zschwendi/117-vision. The Build120/Build121 evidence below is historical and unchanged.
 
 Build120 was built, signed, installed and played on a physical Vision Pro. User feedback described substantially improved handling.
 

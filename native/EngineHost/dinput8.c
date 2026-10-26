@@ -16,6 +16,7 @@
 #include <stdlib.h>
 #include <limits.h>
 #include <stdatomic.h>
+#include "input_prompt.inc"
 #include "device_input.inc"
 static _Atomic uint64_t diagnostic_gamepad_reads, diagnostic_keyboard_events, diagnostic_acquire_lost;
 uint64_t host_dinput_keyboard_events(void) { return atomic_load(&diagnostic_keyboard_events); }
@@ -353,6 +354,7 @@ static bool gamepad_keyboard_mouse_enabled(void) {
     const char *option = getenv("HALO_PAD2KEY");
     return !option || strcmp(option, "0") != 0;
 }
+int host_dinput_pad2key_enabled(void) { return gamepad_keyboard_mouse_enabled(); }
 /* Original 1.10 executable UI-shell lifecycle: 004C8930 sets 00718FC9
  * after selecting levels\\ui\\ui; 004C8B40 clears it on shell teardown.
  * Reading this original state restricts navigation to front-end menus. Never
@@ -389,9 +391,12 @@ static void keyboard_base_state(uint8_t out[256], HostGCSnapshot *owner, uint8_t
     if (device_keys) memcpy(device_keys, hardware, 256);
     if (device_generation) *device_generation = generation;
     HostGCSnapshot pad = {0};
-    if (!hostgc_poll(&pad)) { memset(owner, 0, sizeof *owner); return; }
+    /* Prompt source (input_prompt.h): only the reading admitted past the app
+     * lease counts, never what the app UI polls for itself. */
+    if (!hostgc_poll(&pad)) { memset(owner, 0, sizeof *owner); host_prompt_note_controller(NULL); return; }
     *owner = pad;
-    if (hostgc_app_input_filter(&pad)) { memset(owner,0,sizeof *owner); return; }
+    if (hostgc_app_input_filter(&pad)) { memset(owner,0,sizeof *owner); host_prompt_note_controller_blocked(); return; }
+    host_prompt_note_controller(&pad);
     /* Options/Start must also reach cinematic skip and the in-game pause menu.
      * Cross/Enter and directional menu keys remain restricted to active menus. */
     if (pad.buttons[HOSTGC_BTN_MENU]) out[0x01] |= 0x80;

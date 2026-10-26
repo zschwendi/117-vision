@@ -23,6 +23,8 @@ These are development builds. Physical iPad/iPhone gameplay and the live cross-d
 - A touch- and controller-friendly launcher, controller status, and in-game settings.
 - A shared iPad/iPhone app and cloud-save recovery/migration workflow.
 - Mobile keyboard and mouse/trackpad controls, direct-screen touch aiming, and native-resolution/display-refresh options.
+- Gameplay prompts that name the active controller controls, with keyboard labels after keyboard or mouse input.
+- Maximum graphics selected once on the first build 124 launch; later lower choices are kept.
 
 ## Build from your own game installation
 

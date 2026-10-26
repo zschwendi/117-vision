@@ -5,8 +5,8 @@ struct EnginePadSettingsView: View {
     @ObservedObject var engine: EnginePadModel
     @ObservedObject var cloudSaves: EngineCloudSaveStore
     @Environment(\.dismiss) private var dismiss
-    @AppStorage("HaloPadRenderResolution") private var resolution = "1600x1200"
-    @AppStorage("HaloPadFrameRate") private var frameRate = "display"
+    @AppStorage(EngineLaunchPreferences.padResolutionKey) private var resolution = EngineLaunchPreferences.padHighestResolution
+    @AppStorage(EngineLaunchPreferences.padFrameRateKey) private var frameRate = EngineLaunchPreferences.padHighestFrameRate
     @State private var confirmStop = false
 
     var body: some View {

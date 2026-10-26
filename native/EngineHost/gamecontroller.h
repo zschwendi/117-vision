@@ -163,6 +163,36 @@ bool hostgc_connected(void);
 /* Stable per-thread diagnostic, including incomplete/ambiguous Sense pairs. */
 const char *hostgc_input_state(void);
 
+/* Physical names for the selected controller, for native prompt labels
+ * (input_prompt_label.h). Element i < HOSTGC_BUTTON_COUNT is the logical
+ * button i; then the two sticks and, for a Sense pair, the Create + R3
+ * chord. An empty name means unknown, remapped by the system or not
+ * printable ASCII: the prompt then keeps the original text. Whether a
+ * control currently reaches the game is decided by the label code, not here.
+ * A Sense pair's D-pad entries are its Create + left stick chords. Families
+ * come from Apple's productCategory; a spatial pair is never assumed to be
+ * any brand: its names come from the system's own element metadata. */
+enum {
+    HOSTGC_PROMPT_FAMILY_NONE = 0,
+    HOSTGC_PROMPT_FAMILY_DUALSENSE,
+    HOSTGC_PROMPT_FAMILY_DUALSHOCK4,
+    HOSTGC_PROMPT_FAMILY_XBOX,
+    HOSTGC_PROMPT_FAMILY_GENERIC,
+    HOSTGC_PROMPT_FAMILY_SPATIAL
+};
+enum { HOSTGC_PROMPT_LSTICK = HOSTGC_BUTTON_COUNT, HOSTGC_PROMPT_RSTICK, HOSTGC_PROMPT_CREATE_R3, HOSTGC_PROMPT_ELEMENTS };
+enum { HOSTGC_PROMPT_NAME_MAX = 24 };   /* 23 ASCII characters and a NUL */
+typedef struct {
+    int family;                  /* HOSTGC_PROMPT_FAMILY_* */
+    bool spatial;
+    uint64_t source_generation;  /* hostgc_source_generation() when read */
+    char name[HOSTGC_PROMPT_ELEMENTS][HOSTGC_PROMPT_NAME_MAX];
+} HostGCPromptNames;
+/* The names last read for the selected controller (refreshed on the capture
+ * path when the selection changes, never here). Returns 1 when a family is
+ * known. No Objective-C work and no allocation; any thread. */
+int hostgc_prompt_names(HostGCPromptNames *out);
+
 /* --- Test hooks (no hardware required) --------------------------------------
  * Inject a snapshot that hostgc_poll() will return verbatim until cleared.
  * This lets unit tests drive the DirectInput mapping deterministically. */

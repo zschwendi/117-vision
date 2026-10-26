@@ -366,6 +366,8 @@ final class EngineDiagnostics {
         let poolLeases = withUnsafeBytes(of: pool.slot_leases) { Array($0.bindMemory(to: Int32.self)) }
         var profile = EngineVisionDrawProfile()
         enginevision_draw_profile(&profile)
+        var limit = EngineVisionFrameLimitInfo()
+        let limitKnown = enginevision_frame_limit_info(&limit)
         // Schema 2: the samples array moved to the timeline files.
         let report: [String: Any] = [
             "schema": 2, "runID": runID, "startedAt": ISO8601DateFormatter().string(from: started),
@@ -381,7 +383,18 @@ final class EngineDiagnostics {
             "frameSequence": frame.sequence, "width": frame.width, "height": frame.height,
             "effectiveRenderWidth": panorama.status != 0 && panorama.width > 0 ? panorama.width : frame.width,
             "effectiveRenderHeight": panorama.status != 0 && panorama.height > 0 ? panorama.height : frame.height,
-            "renderResolutionNextLaunch": UserDefaults.standard.string(forKey: "HaloRenderResolution") ?? "2048x1536",
+            "renderResolutionNextLaunch": UserDefaults.standard.string(forKey: EngineLaunchPreferences.visionResolutionKey)
+                ?? EngineLaunchPreferences.visionHighestResolution,
+            "frameRateNextLaunch": UserDefaults.standard.string(forKey: EngineLaunchPreferences.visionFrameRateKey)
+                ?? EngineVisionFrameRate.maximum.rawValue,
+            "launchMaximumVersion": UserDefaults.standard.integer(forKey: EngineLaunchPreferences.markerKey(.vision)),
+            "frameLimiter": [
+                "known": limitKnown, "liftsThrottle": limit.lifts_throttle != 0,
+                "calls": limit.calls, "lifted": limit.lifted, "alreadyUnthrottled": limit.unthrottled,
+                "cinematic": limit.cinematic, "timedemo": limit.timedemo, "declinedConstants": limit.declined,
+                "floorWaits": limit.floor_waits, "floorWaitSeconds": Double(limit.floor_wait_ns) / 1e9,
+                "scope": "Requests and counts at Halo's time update (004C9F90) for this launch. Not a frame rate; the measured engine rate is enginePresentsPerSecond in the timeline samples."
+            ] as [String: Any],
             "audioFrames": sample.audio_frames, "audioNonzeroSamples": sample.audio_nonzero_samples,
             "audioPeak": sample.audio_peak, "audioQueueRunning": sample.audio_queue_running != 0,
             "audioQueueStatus": sample.audio_queue_status, "audioOutputVolume": sample.audio_output_volume,

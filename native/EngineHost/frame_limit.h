@@ -1,6 +1,6 @@
 #ifndef HALO_FRAME_LIMIT_H
 #define HALO_FRAME_LIMIT_H
-/* Halo's 30 fps limiter and the iOS display-rate request.
+/* Halo's 30 fps limiter and the iOS/visionOS frame-rate request.
  *
  * 004C9F90 is Halo's per-frame time update, called once from the main loop
  * (004C7610). It reads QueryPerformanceCounter, and while bl is set it waits
@@ -17,16 +17,18 @@
  * the previous one (0x719700). The simulation's 30 Hz ticks come from that dt
  * elsewhere; the throttle adds only the wait.
  *
- * Above 30 fps the iOS host calls that same original with the throttle byte
- * cleared for the one call and restored as soon as it returns: exactly
+ * Above 30 fps (iOS) or with Maximum chosen (visionOS, where the compositor,
+ * not this request, sets the display rate) the host calls that same original
+ * with the throttle byte cleared for the one call and restored as soon as it
+ * returns: exactly
  * Halo's own unthrottled time update, with the saved setting unchanged for
  * every other reader (Video Setup, the profile write, 0053B000). It does not
  * lift a cinematic or timedemo, and it declines whenever the executable's
  * own constants do not look like the limiter described here.
  *
  * Unthrottled, a frame shorter than the dt floor would be counted as the
- * floor and game time would run fast. That holds whenever the iOS request
- * is above 30 fps, whether the throttle was lifted here or the player's
+ * floor and game time would run fast. That holds whenever the request is
+ * enabled, whether the throttle was lifted here or the player's
  * profile already had it off. So while the request is enabled, every time
  * update outside a cinematic or timedemo reads the floor from the loaded
  * executable and, before the original runs, the host waits until at least
@@ -107,7 +109,8 @@ typedef struct {
 } HaloFrameLimitStats;
 
 /* Implemented in frame_limit_hooks.inc (overrides.c). configure() is called
- * by the iOS runtime on the main thread; the hook runs on the engine thread. */
+ * by the iOS or visionOS runtime on the main thread; the hook runs on the
+ * engine thread. */
 void host_frame_limit_configure(int lift_throttle);
 void host_frame_limit_stats(HaloFrameLimitStats *out);
 

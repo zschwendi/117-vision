@@ -474,3 +474,4 @@ void halo_sense_filter_gamepad(HostGCSnapshot *pad) {
     pthread_mutex_unlock(&sense_lock);
 }
 #include "sense_gesture.inc"
+#include "sense_prompt.inc"   /* read-only prompt context */

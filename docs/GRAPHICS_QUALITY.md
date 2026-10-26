@@ -16,6 +16,29 @@ selected and what actually ran, with sizes. Both are published at each Present
 and name what is on screen: an immersive world frame, the last one kept after
 a dropped frame, or a flat frame shown as drawn (then no option runs).
 
+## Launch resolution and frame rate
+
+Build 124 makes a one-time change on the first launch of each device family:
+
+- Vision Pro: 2560 × 1920 per rendered view, scene upscaling off, Maximum
+  frame rate, and Even frame cadence off. Maximum lifts the saved Halo
+  gameplay 30 FPS limiter while preserving simulation timing, cinematics,
+  timedemo behavior and the stored profile value. Original limiter leaves
+  Halo's saved limiter behavior in control.
+- iPad/iPhone: Native resolution and Display maximum. Native fits a 4:3
+  picture inside the attached display, bounded at 2880 × 2160.
+
+After that first launch, lower choices are preserved. Resolution and the
+engine frame-rate choice apply after fully closing and reopening the app.
+Other settings, including audio, depth, controls and saves, are preserved.
+
+The Vision window requests 120 FPS; the system chooses a supported display
+rate. Immersive rendering requests the highest supported compositor quality
+and no intentional frame repeats, while retaining system frame scheduling.
+A rejected compositor quality configuration falls back to the system default
+and reports the reason. These are requests: the device and scene determine
+actual FPS. The panorama update-budget slider is not an FPS cap.
+
 ## Dimensions per mode
 
 * Immersive panorama, upscaling off: world layers, HUD layer and tracked

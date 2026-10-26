@@ -10,6 +10,10 @@ import ImageIO
 struct EngineImmersiveLayerConfiguration: CompositorLayerConfiguration {
     /// Why tracking areas are on or off this launch, for the report.
     nonisolated(unsafe) static var trackingDecision = "off"
+    /// The drawable quality this launch asked for (visionOS 26), for the
+    /// renderer and the report; nil when the system default is used.
+    nonisolated(unsafe) static var renderQuality: Float?
+    nonisolated(unsafe) static var renderQualityDecision = "system default"
     static let trackingAttemptedKey = "HaloTrackingAreasAttempted"
     static let trackingSucceededKey = "HaloTrackingAreasSucceeded"
 
@@ -70,8 +74,33 @@ struct EngineImmersiveLayerConfiguration: CompositorLayerConfiguration {
                 }
             }
         }
-        EngineImmersiveTrace.shared.record("configuration.end: tracking=\(Self.trackingDecision)")
-        NSLog("[immersive] tracking areas: %@", Self.trackingDecision)
+        // Drawable resolution: the highest the device supports (render quality
+        // 1). It applies only with foveation on, and costs drawable memory
+        // against the app's limit; it does not promise a sustainable rate.
+        // Validated as above once the tracking decision is final, so a
+        // rejected request keeps the system default rather than ending the
+        // scene at launch. Every immersive start asks again.
+        Self.renderQuality = nil
+        Self.renderQualityDecision = "system default"
+        if #available(visionOS 26.0, *) {
+            if !configuration.isFoveationEnabled {
+                Self.renderQualityDecision = "system default (needs foveation, which this device does not offer)"
+            } else {
+                let previous = configuration.maxRenderQuality
+                let highest = LayerRenderer.RenderQuality(1)
+                configuration.maxRenderQuality = highest
+                do {
+                    _ = try LayerRenderer.Properties(configuration: configuration)
+                    Self.renderQuality = highest.rawValue
+                    Self.renderQualityDecision = "highest (\(highest.rawValue)); default \(capabilities.defaultRenderQuality.rawValue)"
+                } catch {
+                    configuration.maxRenderQuality = previous
+                    Self.renderQualityDecision = "system default (highest rejected: \(error))"
+                }
+            }
+        }
+        EngineImmersiveTrace.shared.record("configuration.end: tracking=\(Self.trackingDecision) quality=\(Self.renderQualityDecision)")
+        NSLog("[immersive] tracking areas: %@; render quality: %@", Self.trackingDecision, Self.renderQualityDecision)
     }
 }
 
@@ -501,7 +530,17 @@ final class EngineImmersiveRenderer: @unchecked Sendable {
         depthDescriptor.depthCompareFunction = .always
         guard let panoramaDepth = device.makeDepthStencilState(descriptor: depthDescriptor) else { throw RendererError("Unable to create panorama depth state.") }
         self.panoramaDepth = panoramaDepth
-        control.configured("layout=\(layer.configuration.layout) foveation=\(layer.configuration.isFoveationEnabled) msaa=\(sampleCount) views=\(layer.properties.viewCount) tracking=\(trackingEnabled ? EngineImmersiveLayerConfiguration.trackingDecision : "off (\(EngineImmersiveLayerConfiguration.trackingDecision))")")
+        // No intentional repeats: every display frame asks for a new one.
+        // queryNextFrame and predictTiming still pace the loop.
+        layer.minimumFrameRepeatCount = 0
+        var quality = EngineImmersiveLayerConfiguration.renderQualityDecision
+        if #available(visionOS 26.0, *) {
+            if let requested = EngineImmersiveLayerConfiguration.renderQuality {
+                layer.renderQuality = LayerRenderer.RenderQuality(min(requested, layer.configuration.maxRenderQuality.rawValue))
+            }
+            quality += " now \(layer.renderQuality.rawValue) of max \(layer.configuration.maxRenderQuality.rawValue)"
+        }
+        control.configured("layout=\(layer.configuration.layout) foveation=\(layer.configuration.isFoveationEnabled) msaa=\(sampleCount) views=\(layer.properties.viewCount) tracking=\(trackingEnabled ? EngineImmersiveLayerConfiguration.trackingDecision : "off (\(EngineImmersiveLayerConfiguration.trackingDecision))") quality=\(quality) repeat=\(layer.minimumFrameRepeatCount)")
         // Attached last: the closure captures self, which must be whole first.
         layer.onSpatialEvent = { [weak self] events in self?.handle(spatial: events) }
     }

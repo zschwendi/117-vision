@@ -32,6 +32,16 @@ Escape for keyboards without an Esc key (iPadOS can also remap Caps Lock to
 Escape in Settings › General › Keyboard › Hardware Keyboard › Modifier Keys).
 ⌘L releases or recaptures the pointer. The mouse wheel is not mapped.
 
+## Gameplay prompts
+
+With a controller active, verified gameplay prompts name its controls: for
+example, Square for use/reload and Triangle for weapon switching on a Sony
+controller. An accepted keyboard press, mouse click or meaningful pointer
+movement switches back to Halo's key names; deliberate controller input
+switches back. Idle tracking and stick drift do not select an input method.
+Direct touch uses the keyboard/mouse prompt family. Unknown or ambiguous
+controls and the binding editor keep the original text; bindings are unchanged.
+
 ## Touch
 
 - One-finger drag: aim (in Halo menus it moves Halo's own cursor).

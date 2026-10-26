@@ -15,6 +15,10 @@ struct MasterCheefPadApp: App {
     @StateObject private var assets = EngineAssetStore()
     @StateObject private var engine = EnginePadModel()
     @StateObject private var cloudSaves = EngineCloudSaveStore()
+    /// Before the settings sheet or the launch plan reads the saved choices.
+    init() {
+        if EngineLaunchPreferences.migrate(.pad).applied { NSLog("[launch-graphics] Native at the display maximum applied once") }
+    }
     var body: some Scene {
         WindowGroup {
             EnginePadLibraryView(assets: assets, engine: engine, cloudSaves: cloudSaves, input: engine.input)

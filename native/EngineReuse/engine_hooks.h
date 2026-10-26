@@ -24,6 +24,7 @@
     X(0x004C1530u) X(0x004923D0u) X(0x00494010u) X(0x004ACAD0u) X(0x004B2CF0u) /* dual weapon update, animation, view ownership, reticle */ \
     X(0x004593B0u) X(0x004C3F10u) X(0x004D6880u) X(0x005658F0u) X(0x0056E080u) X(0x0056E280u) X(0x0056E440u) X(0x004BEF80u) /* tracked weapon fire, skeleton, shot ray, grenade accept/create/release */ \
     X(0x004C6E80u) /* campaign unlock and input/control tick */ \
+    X(0x0048C7F0u) /* binding name for gameplay prompts (input_prompt_hooks.inc) */ \
     X(0x00566970u) /* seat entry: tracked weapon mount witness */ \
     X(0x00442550u) X(0x00544090u) X(0x00544120u) X(0x0048A1A0u) /* audio/HSC */ \
     X(0x004D6FC0u) X(0x00533850u) X(0x00533730u) /* model capture */ \
@@ -41,9 +42,11 @@
     X(0x00552DE0u) /* BSP material walk: the two with only a `ret` callback run natively */ \
     X(0x005540C0u) X(0x00553C40u) X(0x00553F10u) /* exact light/shadow gather loops */
 
-/* iOS (not visionOS) only: Halo's time update, where the display-rate request
- * lifts the saved 30 fps throttle for one call (frame_limit_hooks.inc). Other
- * platforms keep their direct call, byte for byte. */
+/* iPhone, iPad and visionOS only: Halo's time update, where the launch
+ * frame-rate request lifts the saved 30 fps throttle for one call
+ * (frame_limit_hooks.inc). The macro names predate visionOS routing and are
+ * kept so existing build flags still select it. The Mac keeps its direct
+ * call, byte for byte. */
 #define ENGINE_IOS_HOOK_ADDRESSES(X) \
     X(0x004C9F90u) /* time update and 30 fps limiter */
 
@@ -51,7 +54,7 @@
 #include <TargetConditionals.h>
 #endif
 #ifndef ENGINE_IOS_HOOKS
-#if defined(TARGET_OS_IOS) && TARGET_OS_IOS && !(defined(TARGET_OS_VISION) && TARGET_OS_VISION)
+#if (defined(TARGET_OS_IOS) && TARGET_OS_IOS) || (defined(TARGET_OS_VISION) && TARGET_OS_VISION)
 #define ENGINE_IOS_HOOKS 1
 #else
 #define ENGINE_IOS_HOOKS 0

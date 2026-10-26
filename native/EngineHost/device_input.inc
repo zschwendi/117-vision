@@ -1,6 +1,7 @@
 /* Hardware keyboard/mouse/touch source; see device_input.h. Included once by
  * dinput8.c so DirectInput can merge it without another translation unit. */
 #include "device_input.h"
+#include "input_prompt.h"   /* accepted presses/motion choose the prompt source */
 #include <math.h>
 #include <pthread.h>
 
@@ -161,7 +162,9 @@ int host_device_input_key(int source, uint32_t usage, int down, int system_chord
         device.key[dik].held = 1;
     }
     device.usage_dik[usage] = dik; device.key_count[dik]++;
-    return device_accept_locked();
+    device_accept_locked();
+    host_prompt_note_device(HOST_PROMPT_DEVICE_KEY);   /* after device_lock: input_prompt.h */
+    return 1;
 }
 int host_device_input_key_pulse(uint8_t dik) {
     int lease = hostgc_app_input_lease_active();
@@ -178,11 +181,13 @@ int host_device_input_button(int source, int button, int down) {
     if (!down) {
         if (!p->held) return device_reject_locked();
         pulse_release_hold(p);
-    } else {
-        if (!device_open_locked(lease) || p->held || !pulse_queue(p)) return device_reject_locked();
-        p->held = 1;
+        return device_accept_locked();
     }
-    return device_accept_locked();
+    if (!device_open_locked(lease) || p->held || !pulse_queue(p)) return device_reject_locked();
+    p->held = 1;
+    device_accept_locked();
+    host_prompt_note_device(HOST_PROMPT_DEVICE_BUTTON);
+    return 1;
 }
 int host_device_input_button_cancel(int source, int button) {
     pthread_mutex_lock(&device_lock);
@@ -203,7 +208,9 @@ int host_device_input_click(int source, int button) {
     /* A tap on a button the mouse already holds adds nothing: queueing it
      * would insert a release into the held press. */
     if (!device.button[button].held && !pulse_queue(&device.button[button])) return device_reject_locked();
-    return device_accept_locked();
+    device_accept_locked();
+    host_prompt_note_device(HOST_PROMPT_DEVICE_CLICK);
+    return 1;
 }
 static double device_bound(double v) {
     return v > HOST_DEVICE_DELTA_LIMIT ? HOST_DEVICE_DELTA_LIMIT : v < -HOST_DEVICE_DELTA_LIMIT ? -HOST_DEVICE_DELTA_LIMIT : v;
@@ -214,7 +221,9 @@ int host_device_input_motion(int source, double dx, double dy) {
     if ((source != HOST_DEVICE_TOUCH && (source == HOST_DEVICE_SOURCE_NONE || source != device.pointer_source)) ||
         !isfinite(dx) || !isfinite(dy) || !device_open_locked(lease)) return device_reject_locked();
     device.dx = device_bound(device.dx + dx); device.dy = device_bound(device.dy + dy);
-    return device_accept_locked();
+    device_accept_locked();
+    host_prompt_note_motion(dx, dy, host_monotonic_ns());
+    return 1;
 }
 uint64_t host_device_input_generation(void) {
     pthread_mutex_lock(&device_lock); uint64_t g = device.generation; pthread_mutex_unlock(&device_lock); return g;

@@ -20,7 +20,10 @@ The launcher includes game-data preparation, graphics options, controller status
 the native About page, and the shared Files cloud-save interface. The in-game
 Settings button keeps these controls accessible during play. Graphics changes
 apply when the app is fully closed and reopened. The original 4:3 game picture
-is fitted to the display; the app does not stretch the HUD.
+is fitted to the display; the app does not stretch the HUD. Build 124 selects
+Native resolution and Display maximum once on its first launch. Any lower
+settings chosen afterward are retained. The actual frame rate depends on
+the device and scene.
 
 ## Build
 

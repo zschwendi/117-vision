@@ -1,7 +1,8 @@
-/* The iOS display-rate request at Halo's time update (frame_limit.h).
- * Included by overrides.c. The entry is routed here only where engine_hooks.h
- * lists it (ENGINE_IOS_HOOK_ADDRESSES); elsewhere nothing calls the hook and
- * nothing configures it. All guest access is on the engine thread. */
+/* The iOS and visionOS frame-rate request at Halo's time update
+ * (frame_limit.h). Included by overrides.c. The entry is routed here only
+ * where engine_hooks.h lists it (ENGINE_IOS_HOOK_ADDRESSES); elsewhere nothing
+ * calls the hook and nothing configures it. All guest access is on the
+ * engine thread. */
 #include "frame_limit.h"
 #include <stdatomic.h>
 #include <time.h>

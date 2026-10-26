@@ -867,10 +867,231 @@ static bool capture_spatial_pair(NSArray<GCController *> *controllers, HostGCSna
     return false;
 }
 
+/* Native prompt names (gamecontroller.h). Read only when the selection, the
+ * topology or a two-second refresh comes due, outside every other lock; the
+ * hook copies the published table under g_prompt_lock, a leaf. Every element
+ * property is checked with respondsToSelector:, so stand-in devices without
+ * naming metadata simply produce no names. */
+static os_unfair_lock g_prompt_lock = OS_UNFAIR_LOCK_INIT;
+static HostGCPromptNames g_prompt;
+static uint64_t g_prompt_topology, g_prompt_ns;
+static const void *g_prompt_ids[2];
+static bool g_prompt_valid;
+#define HOSTGC_PROMPT_REFRESH_NS UINT64_C(2000000000)
+
+static const char *const prompt_dualsense[HOSTGC_PROMPT_ELEMENTS] = {
+    "Cross", "Circle", "Square", "Triangle", "L1", "R1", "L2", "R2", "L3", "R3", "Options", "Create", "",
+    "D-pad Up", "D-pad Down", "D-pad Left", "D-pad Right", "Left Stick", "Right Stick", "" };
+static const char *const prompt_dualshock4[HOSTGC_PROMPT_ELEMENTS] = {
+    "Cross", "Circle", "Square", "Triangle", "L1", "R1", "L2", "R2", "L3", "R3", "Options", "Share", "",
+    "D-pad Up", "D-pad Down", "D-pad Left", "D-pad Right", "Left Stick", "Right Stick", "" };
+static const char *const prompt_xbox[HOSTGC_PROMPT_ELEMENTS] = {
+    "A", "B", "X", "Y", "LB", "RB", "LT", "RT", "LS", "RS", "Menu", "View", "",
+    "D-pad Up", "D-pad Down", "D-pad Left", "D-pad Right", "Left Stick", "Right Stick", "" };
+
+/* Printable ASCII only: Halo's HUD font is not known to cover anything else. */
+static bool prompt_copy(char dst[HOSTGC_PROMPT_NAME_MAX], const char *src) {
+    dst[0] = 0;
+    if (!src) return false;
+    size_t n = strlen(src);
+    if (!n || n >= HOSTGC_PROMPT_NAME_MAX || src[0] == ' ' || src[n - 1] == ' ') return false;
+    for (size_t i = 0; i < n; i++) if ((unsigned char)src[i] < 0x20 || (unsigned char)src[i] > 0x7E) return false;
+    memcpy(dst, src, n + 1);
+    return true;
+}
+static NSString *prompt_string(id element, SEL selector) {
+    if (!element || ![element respondsToSelector:selector]) return nil;
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Warc-performSelector-leaks"
+    id value = [element performSelector:selector];
+#pragma clang diagnostic pop
+    return [value isKindOfClass:NSString.class] ? value : nil;
+}
+/* The element's current name, or nil when the system remaps or disables it. */
+static NSString *prompt_unremapped_name(id element) {
+    NSString *name = prompt_string(element, @selector(localizedName));
+    if (!name) return nil;
+    if ([element respondsToSelector:@selector(unmappedLocalizedName)]) {
+        NSString *unmapped = prompt_string(element, @selector(unmappedLocalizedName));
+        if (!unmapped || ![name isEqualToString:unmapped]) return nil;
+    }
+    return name;
+}
+static id prompt_property(id object, SEL selector) {
+    if (!object || ![object respondsToSelector:selector]) return nil;
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Warc-performSelector-leaks"
+    return [object performSelector:selector];
+#pragma clang diagnostic pop
+}
+static void prompt_read_extended(GCController *controller, HostGCPromptNames *names) {
+    id g = prompt_property(controller, @selector(extendedGamepad));
+    if (!g) return;
+    NSString *category = prompt_string(controller, @selector(productCategory));
+    const char *const *table = NULL;
+    names->family = HOSTGC_PROMPT_FAMILY_GENERIC;
+    if (@available(macOS 12.0, iOS 15.0, tvOS 15.0, *)) {
+        if ([category isEqualToString:GCProductCategoryDualSense]) { table = prompt_dualsense; names->family = HOSTGC_PROMPT_FAMILY_DUALSENSE; }
+        else if ([category isEqualToString:GCProductCategoryDualShock4]) { table = prompt_dualshock4; names->family = HOSTGC_PROMPT_FAMILY_DUALSHOCK4; }
+        else if ([category isEqualToString:GCProductCategoryXboxOne]) { table = prompt_xbox; names->family = HOSTGC_PROMPT_FAMILY_XBOX; }
+    }
+    id dpad = prompt_property(g, @selector(dpad));
+    id elements[HOSTGC_PROMPT_ELEMENTS] = {
+        prompt_property(g, @selector(buttonA)), prompt_property(g, @selector(buttonB)),
+        prompt_property(g, @selector(buttonX)), prompt_property(g, @selector(buttonY)),
+        prompt_property(g, @selector(leftShoulder)), prompt_property(g, @selector(rightShoulder)),
+        prompt_property(g, @selector(leftTrigger)), prompt_property(g, @selector(rightTrigger)),
+        prompt_property(g, @selector(leftThumbstickButton)), prompt_property(g, @selector(rightThumbstickButton)),
+        prompt_property(g, @selector(buttonMenu)), prompt_property(g, @selector(buttonOptions)), nil,
+        prompt_property(dpad, @selector(up)), prompt_property(dpad, @selector(down)),
+        prompt_property(dpad, @selector(left)), prompt_property(dpad, @selector(right)),
+        prompt_property(g, @selector(leftThumbstick)), prompt_property(g, @selector(rightThumbstick)), nil };
+    for (int i = 0; i < HOSTGC_PROMPT_ELEMENTS; i++) {
+        NSString *current = prompt_unremapped_name(elements[i]);
+        if (!current) continue;
+        prompt_copy(names->name[i], table ? table[i] : current.UTF8String);
+    }
+}
+#if TARGET_OS_VISION || defined(HOSTGC_SPATIAL_TESTING)
+/* What the element's own system glyph shows, when it is one of the four face
+ * shapes ("square.circle") or a control label ("l1.rectangle.roundedbottom",
+ * "r3.button.angledbottom.horizontal.right"); nil otherwise. */
+static NSString *prompt_spatial_glyph(id element) {
+    NSString *symbol = prompt_string(element, @selector(sfSymbolsName));
+    NSString *shape = [symbol componentsSeparatedByString:@"."].firstObject;
+    if ([shape isEqualToString:@"xmark"]) return @"Cross";
+    if ([shape isEqualToString:@"circle"]) return @"Circle";
+    if ([shape isEqualToString:@"square"]) return @"Square";
+    if ([shape isEqualToString:@"triangle"]) return @"Triangle";
+    if (shape.length == 2 && ([shape hasPrefix:@"l"] || [shape hasPrefix:@"r"]) &&
+        [shape characterAtIndex:1] >= '1' && [shape characterAtIndex:1] <= '3') return shape.uppercaseString;
+    return nil;
+}
+/* The element's own name: its glyph's label, else its localized name. */
+static NSString *prompt_spatial_base(id element) {
+    return prompt_spatial_glyph(element) ?: prompt_string(element, @selector(localizedName));
+}
+static bool prompt_spatial_sided(NSString *base) {
+    NSString *lower = base.lowercaseString;
+    return [lower hasPrefix:@"left"] || [lower hasPrefix:@"right"] ||
+        (base.length == 2 && ([base hasPrefix:@"L"] || [base hasPrefix:@"R"]) &&
+         [[NSCharacterSet decimalDigitCharacterSet] characterIsMember:[base characterAtIndex:1]]);
+}
+/* Named with the side ARKit's chirality proved, unless the name already says it. */
+static void prompt_spatial_name(char dst[HOSTGC_PROMPT_NAME_MAX], id element, const char *side) {
+    NSString *base = prompt_spatial_base(element);
+    if (!base) { dst[0] = 0; return; }
+    prompt_copy(dst, prompt_spatial_sided(base) ? base.UTF8String : [NSString stringWithFormat:@"%s %@", side, base].UTF8String);
+}
+/* Chord parts, longest first. Shorter forms are used only when the longer
+ * chord would exceed 23 characters, and only where the element itself proves
+ * them: a trailing " Button" dropped from Create's own name, "L Stick"
+ * for the left half's thumbstick (its alias and chirality), "R3" only from
+ * the glyph or name, else "R Stick Button" for the right half's stick click. */
+static NSArray<NSString *> *prompt_spatial_forms(NSString *base, NSString *proven, bool drop_button) {
+    NSMutableArray<NSString *> *forms = [NSMutableArray new];
+    if (base) [forms addObject:base];
+    if (drop_button && [base hasSuffix:@" Button"] && base.length > 7) [forms addObject:[base substringToIndex:base.length - 7]];
+    if (base && proven && ![forms containsObject:proven]) [forms addObject:proven];
+    return forms;
+}
+static NSString *prompt_chord(char dst[HOSTGC_PROMPT_NAME_MAX], NSArray<NSString *> *first, NSArray<NSString *> *second,
+                              NSString *suffix, NSString *longest_suffix) {
+    for (NSString *b in second) for (NSString *a in first) {
+        NSString *widest = [NSString stringWithFormat:@"%@+%@%@", a, b, longest_suffix ?: @""];
+        char probe[HOSTGC_PROMPT_NAME_MAX];
+        if (!prompt_copy(probe, widest.UTF8String)) continue;
+        if (prompt_copy(dst, [NSString stringWithFormat:@"%@+%@%@", a, b, suffix ?: @""].UTF8String)) return a;
+    }
+    dst[0] = 0; return nil;
+}
+static void prompt_read_spatial(NSArray<GCController *> *controllers, HostGCPromptNames *names) {
+    names->family = HOSTGC_PROMPT_FAMILY_SPATIAL;
+    names->spatial = true;
+    if (@available(macOS 26.0, iOS 26.0, visionOS 26.0, *)) {
+        id left = prompt_property(controllers[0], @selector(input)), right = prompt_property(controllers[1], @selector(input));
+        id lb = prompt_property(left, @selector(buttons)), rb = prompt_property(right, @selector(buttons));
+        id ld = prompt_property(left, @selector(dpads)), rd = prompt_property(right, @selector(dpads));
+        /* Every control is named; input_prompt_label.h decides from the live
+         * Sense context (halo_sense_prompt_context) which ones reach the game. */
+        prompt_spatial_name(names->name[HOSTGC_BTN_X], [lb objectForKeyedSubscript:GCInputButtonA], "Left");
+        prompt_spatial_name(names->name[HOSTGC_BTN_Y], [lb objectForKeyedSubscript:GCInputButtonB], "Left");
+        prompt_spatial_name(names->name[HOSTGC_BTN_A], [rb objectForKeyedSubscript:GCInputButtonA], "Right");
+        prompt_spatial_name(names->name[HOSTGC_BTN_B], [rb objectForKeyedSubscript:GCInputButtonB], "Right");
+        prompt_spatial_name(names->name[HOSTGC_BTN_LSHOULDER], [lb objectForKeyedSubscript:GCInputGripButton], "Left");
+        prompt_spatial_name(names->name[HOSTGC_BTN_RSHOULDER], [rb objectForKeyedSubscript:GCInputGripButton], "Right");
+        prompt_spatial_name(names->name[HOSTGC_BTN_LTRIGGER], [lb objectForKeyedSubscript:GCInputTrigger], "Left");
+        prompt_spatial_name(names->name[HOSTGC_BTN_RTRIGGER], [rb objectForKeyedSubscript:GCInputTrigger], "Right");
+        prompt_spatial_name(names->name[HOSTGC_BTN_LTHUMB], [lb objectForKeyedSubscript:GCInputThumbstickButton], "Left");
+        id right_click = [rb objectForKeyedSubscript:GCInputThumbstickButton];
+        prompt_spatial_name(names->name[HOSTGC_BTN_RTHUMB], right_click, "Right");
+        prompt_spatial_name(names->name[HOSTGC_BTN_MENU], [rb objectForKeyedSubscript:GCInputButtonMenu], "Right");
+        id create = [lb objectForKeyedSubscript:GCInputButtonMenu];
+        prompt_spatial_name(names->name[HOSTGC_BTN_OPTIONS], create, "Left");
+        prompt_spatial_name(names->name[HOSTGC_PROMPT_RSTICK], [rd objectForKeyedSubscript:GCInputThumbstick], "Right");
+        id stick = [ld objectForKeyedSubscript:GCInputThumbstick];
+        prompt_spatial_name(names->name[HOSTGC_PROMPT_LSTICK], stick, "Left");
+        NSArray<NSString *> *create_forms = prompt_spatial_forms(prompt_spatial_base(create), nil, true);
+        /* Create + left stick: the chord capture_spatial_pair turns into D-pad. */
+        NSArray<NSString *> *stick_forms = prompt_spatial_forms(prompt_spatial_base(stick), @"L Stick", false);
+        static NSString *const dirs[4] = { @" Up", @" Down", @" Left", @" Right" };
+        NSString *create_used = nil;
+        for (int d = 0; d < 4; d++)
+            create_used = prompt_chord(names->name[HOSTGC_BTN_DPAD_UP + d], create_forms, stick_forms, dirs[d], @" Right") ?: create_used;
+        /* Keep the same Create form in both chords where it fits. */
+        if (create_used) {
+            NSMutableArray<NSString *> *ordered = [create_forms mutableCopy];
+            [ordered removeObject:create_used]; [ordered insertObject:create_used atIndex:0]; create_forms = ordered;
+        }
+        /* Create + R3: the scoreboard while Quick gestures own centered Create. */
+        NSString *click = names->name[HOSTGC_BTN_RTHUMB][0] ? @(names->name[HOSTGC_BTN_RTHUMB]) : nil;
+        NSString *click_glyph = prompt_spatial_glyph(right_click);
+        NSArray<NSString *> *click_forms = prompt_spatial_forms(click,
+            [click_glyph isEqualToString:@"R3"] || [click isEqualToString:@"R3"] ? @"R3" : @"R Stick Button", false);
+        prompt_chord(names->name[HOSTGC_PROMPT_CREATE_R3], create_forms, click_forms, nil, nil);
+    }
+}
+#endif
+static void prompt_read(NSArray<GCController *> *controllers, HostGCPromptNames *names) {
+    memset(names, 0, sizeof *names);
+#if TARGET_OS_VISION || defined(HOSTGC_SPATIAL_TESTING)
+    if (controllers.count == 2) { prompt_read_spatial(controllers, names); return; }
+#endif
+    if (controllers.count == 1) prompt_read_extended(controllers.firstObject, names);
+}
+static void prompt_observe(NSArray<GCController *> *controllers) {
+    uint64_t now = now_ns();
+    os_unfair_lock_lock(&g_lock); uint64_t topology = g_topology; os_unfair_lock_unlock(&g_lock);
+    const void *first = (__bridge const void *)controllers.firstObject;
+    const void *second = controllers.count == 2 ? (__bridge const void *)controllers.lastObject : NULL;
+    uint64_t generation = hostgc_source_generation();
+    os_unfair_lock_lock(&g_prompt_lock);
+    bool current = g_prompt_valid && g_prompt_topology == topology && g_prompt_ids[0] == first &&
+        g_prompt_ids[1] == second && g_prompt.source_generation == generation &&
+        now >= g_prompt_ns && now - g_prompt_ns < HOSTGC_PROMPT_REFRESH_NS;
+    os_unfair_lock_unlock(&g_prompt_lock);
+    if (current) return;
+    HostGCPromptNames names;
+    prompt_read(controllers, &names);
+    names.source_generation = generation;
+    os_unfair_lock_lock(&g_prompt_lock);
+    g_prompt = names; g_prompt_topology = topology; g_prompt_ns = now;
+    g_prompt_ids[0] = first; g_prompt_ids[1] = second; g_prompt_valid = true;
+    os_unfair_lock_unlock(&g_prompt_lock);
+}
+int hostgc_prompt_names(HostGCPromptNames *out) {
+    if (!out) return 0;
+    os_unfair_lock_lock(&g_prompt_lock);
+    if (g_prompt_valid) *out = g_prompt; else memset(out, 0, sizeof *out);
+    os_unfair_lock_unlock(&g_prompt_lock);
+    return out->family != HOSTGC_PROMPT_FAMILY_NONE;
+}
+
 static bool capture_reading(HostGCSnapshot *out) {
     @autoreleasepool {
     memset(out, 0, sizeof *out);
     NSArray<GCController *> *controllers = controllers_for_input();
+    prompt_observe(controllers);
     if (controllers.count == 2) return capture_spatial_pair(controllers, out);
     GCController *controller = controllers.firstObject;
     /* capture returns an immutable, internally consistent reading.  Reading

@@ -19,7 +19,10 @@ struct EngineFrameView: UIViewRepresentable {
         // lowers it to its screen's maximum once it is in a window.
         view.preferredFramesPerSecond = Int(enginevision_mobile_presenter_fps(0))
 #else
-        view.preferredFramesPerSecond = 60
+        // A requested upper target, not a detected maximum or a promised
+        // rate. visionOS has no UIScreen to ask; MTKView picks the rate
+        // closest to this that the display supports (MTKView.h).
+        view.preferredFramesPerSecond = Self.visionRequestedFramesPerSecond
 #endif
         view.enableSetNeedsDisplay = false
         view.isPaused = false
@@ -31,6 +34,12 @@ struct EngineFrameView: UIViewRepresentable {
         return view
     }
     func updateUIView(_ uiView: MTKView, context: Context) {}
+#if !os(iOS)
+    /// The highest refresh rate Apple lists for any Apple Vision Pro display
+    /// (120 Hz, M5; the M2 model lists up to 100 Hz). A request the system
+    /// lowers to what the headset's display can do.
+    static let visionRequestedFramesPerSecond = 120
+#endif
     static func dismantleUIView(_ uiView: MTKView, coordinator: Renderer) { uiView.delegate = nil }
 
     final class Renderer: NSObject, MTKViewDelegate {

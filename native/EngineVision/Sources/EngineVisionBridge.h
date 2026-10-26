@@ -276,6 +276,19 @@ int enginevision_mobile_prepare_launch(EngineMobileGraphicsPlan *out);
  * Resolution never changes. Main thread. */
 int32_t enginevision_mobile_presenter_fps(int32_t screen_max_fps);
 
+/* visionOS: whether this launch lifts Halo's saved 30 fps limiter at its time
+ * update (HaloVisionFrameRate, frame_limit.h), and the hook's cumulative
+ * counts: calls; run with the throttle lifted; already unthrottled (floor
+ * guard only); kept for a cinematic or timedemo; declined for unexpected
+ * executable constants; waits so dt was not below Halo's floor. A request
+ * and its counters, not a measured frame rate. visionOS builds only. */
+typedef struct {
+    int32_t lifts_throttle;
+    uint64_t calls, lifted, unthrottled, cinematic, timedemo, declined;
+    uint64_t floor_waits, floor_wait_ns;
+} EngineVisionFrameLimitInfo;
+bool enginevision_frame_limit_info(EngineVisionFrameLimitInfo *out);
+
 /* Existing d3d9.c links against this macOS-named interface. EngineVision owns
  * this platform replacement; it creates no UIKit/AppKit objects. */
 int metalwin_init(int width, int height, const char *title);

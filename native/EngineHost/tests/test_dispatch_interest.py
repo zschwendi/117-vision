@@ -13,12 +13,16 @@ def macro_list(name):
     body = header.split(f'#define {name}(X)')[1].split('\n\n')[0]
     return {int(x, 16) for x in re.findall(r'X\(0x([0-9a-fA-F]+)u\)', body)}
 hooks, trace = macro_list('ENGINE_HOOK_ADDRESSES'), macro_list('ENGINE_TRACE_HOOK_ADDRESSES')
-# iOS-only behavioural hooks (frame_limit_hooks.inc) route only in iOS builds.
+# Mobile-only behavioural hooks (frame_limit_hooks.inc) route only in iPhone,
+# iPad and visionOS builds; the Mac keeps the direct call.
 ios = macro_list('ENGINE_IOS_HOOK_ADDRESSES')
+gate = header.split('#ifndef ENGINE_IOS_HOOKS')[1].split('#endif\n#endif')[0]
+assert 'TARGET_OS_IOS' in gate and 'TARGET_OS_VISION' in gate and '!(defined(TARGET_OS_VISION)' not in gate, \
+    'ENGINE_IOS_HOOKS must route iOS and visionOS builds'
 assert hooks and trace and ios and not hooks & trace and not ios & (hooks | trace)
 hooks |= ios
 files = ['a10_control.inc','a10_gamepad.inc','hsc_trace.inc','audio_ownership_trace.inc',
-         'model_capture_hooks.inc','panorama_hooks.inc','sense_weapon_hooks.inc','sense_grenade.inc','sense_grenade_hold.inc','sense_body_hooks.inc','sense_world_model_override.inc','sense_dual_render.inc','sense_reticle_offhand.inc','dual_wield.inc','panorama_overlay_scope.h','native_leaves.h','frame_pacing_hooks.inc','frame_limit_hooks.inc']
+         'model_capture_hooks.inc','panorama_hooks.inc','sense_weapon_hooks.inc','sense_grenade.inc','sense_grenade_hold.inc','sense_body_hooks.inc','sense_world_model_override.inc','sense_dual_render.inc','sense_reticle_offhand.inc','dual_wield.inc','panorama_overlay_scope.h','native_leaves.h','frame_pacing_hooks.inc','frame_limit_hooks.inc','input_prompt_hooks.inc']
 required, trace_only = {0x004C6E80}, set()
 for name in files:
     text = (root/name).read_text()

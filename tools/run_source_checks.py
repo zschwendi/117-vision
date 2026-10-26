@@ -46,6 +46,11 @@ CONTROLLER_CHECKS = [
     ('controller-snapshot', 'test_controller_snapshot.m', [], 0),
     ('sense-app-input', 'test_app_input.m', ['-I', HOST, '-I', ROOT / 'native/EngineReuse', '-lm'], 0),
     ('device-input', 'test_device_input.m', ['-I', HOST, '-I', ROOT / 'native/EngineReuse', '-lm'], 0),
+    ('input-prompt-device', 'test_input_prompt_device.m',
+     ['-I', HOST, '-I', ROOT / 'native/EngineReuse', '-lm', '-fno-sanitize-recover=undefined'], 0),
+    ('controller-prompt-names', 'test_gamecontroller_prompt_names.m',
+     [*STRICT, '-Wno-unused-function', '-I', HOST, '-I', ROOT / 'native/EngineReuse', '-lm',
+      '-fno-sanitize-recover=undefined'], 26),
     ('gamecontroller-spatial', 'test_gamecontroller_spatial.m', STRICT, 26),
     ('controller-spatial-haptics', 'test_controller_spatial_haptics.m', STRICT, 26),
 ]
@@ -55,6 +60,18 @@ def run_controller_check(temp, flags, name, source, extra, minimum):
     if platform.system() != 'Darwin' or int((platform.mac_ver()[0] or '0').split('.')[0]) < minimum:
         print(f'SKIP {name}: requires macOS {minimum} or later', flush=True)
         return False
+    if name == 'controller-prompt-names':
+        # Spatial metadata needs both the runtime and SDK. The macOS15 CI
+        # host skips honestly; a capable local host runs the actual fixture.
+        try:
+            sdk = subprocess.run(['xcrun', '--sdk', 'macosx', '--show-sdk-version'],
+                                 capture_output=True, text=True, timeout=30)
+            sdk_major = int(sdk.stdout.strip().split('.')[0]) if sdk.returncode == 0 else 0
+        except (OSError, ValueError, subprocess.TimeoutExpired):
+            sdk_major = 0
+        if sdk_major < 26:
+            print(f'SKIP {name}: requires macOS SDK26 or later', flush=True)
+            return False
     binary = Path(temp) / name
     run([os.environ.get('CC', 'clang'), *flags, '-fobjc-arc', '-fblocks', *extra, HOST / 'tests' / source,
          '-framework', 'Foundation', '-framework', 'CoreHaptics', '-framework', 'GameController', '-o', binary])
@@ -88,10 +105,37 @@ def run_metal_check(temp, flags, name):
     result = run([binary], capture_output=True)
     return not any(line.startswith('SKIP:') for line in result.stdout.splitlines())
 
+def run_frame_limit_sdk_check(temp):
+    """Compile actual device target routing; no device, simulator or game code.
+
+    The portable frame_limit_routing case executes the Mac/desktop route.
+    These compile-only probes use each SDK's real TargetConditionals instead
+    of overriding ENGINE_IOS_HOOKS. Missing SDKs are explicit non-passes.
+    """
+    complete = True
+    for sdk, target in (('iphoneos', 'arm64-apple-ios18.0'), ('xros', 'arm64-apple-xros26.0')):
+        try:
+            lookup = subprocess.run(['xcrun', '--sdk', sdk, '--show-sdk-path'],
+                                    capture_output=True, text=True, timeout=30)
+        except (OSError, subprocess.TimeoutExpired):
+            lookup = None
+        if lookup is None or lookup.returncode or not lookup.stdout.strip():
+            print(f'SKIP frame-limit-sdk-routing {sdk}: device SDK unavailable', flush=True)
+            complete = False
+            continue
+        run(['xcrun', '--sdk', sdk, 'clang', '-target', target, '-isysroot', lookup.stdout.strip(),
+             '-O2', '-I', ROOT / 'native/EngineReuse', '-I', HOST, '-DEXPECT_ROUTED=1',
+             '-c', HOST / 'tests/test_frame_limit_routing.c', '-o', Path(temp) / f'frame-limit-{sdk}.o'])
+        print(f'PASS frame-limit-sdk-routing {sdk}: compiled only; no device execution', flush=True)
+    return complete
+
 # Swift validations selectable with --only: name -> (swiftc flags, sources).
 VISION = ROOT / 'native/EngineVision'
 PAD = ROOT / 'native/EnginePad'
 SWIFT_CHECKS = {
+    'launch-preferences': (['-parse-as-library'],
+                           [VISION / 'Sources/EngineLaunchPreferences.swift', VISION / 'Sources/EnginePresentationPreferences.swift',
+                            VISION / 'Tests/LaunchPreferencesValidation.swift']),
     'pad-input-policy': (['-parse-as-library', '-swift-version', '5'],
                          [PAD / 'Sources/EnginePadInputPolicy.swift', PAD / 'Sources/EnginePadPresentationState.swift',
                           PAD / 'Tests/EnginePadInputPolicyValidation.swift']),
@@ -136,6 +180,7 @@ def run_swift_check(temp, name, sanitize=False):
          '-module-cache-path', Path(temp) / 'swift-cache', *sources, '-o', binary])
     arguments = [VISION / 'Sources/EngineSensePhysicalSettings.swift', VISION / 'Sources/EngineSenseSettingsView.swift'] if name == 'sense-physical-settings' else []
     if name == 'reticle-motion': arguments = [VISION / 'Sources/EngineImmersive.swift']
+    if name == 'launch-preferences': arguments = [ROOT]
     run([binary, *arguments])
     return True
 
@@ -163,6 +208,9 @@ def main():
     cases = [(name, []) for name in ('frame_pacer', 'panorama_budget', 'pointer_step', 'pointer_input', 'panorama_epoch', 'panorama_gpu_carry', 'panorama_lifecycle', 'panorama_pose_export', 'panorama_camera_cut', 'panorama_motion_budget', 'panorama_graphics', 'texture_mips', 'dinput_lifecycle', 'winsock', 'multiplayer_update', 'x87_nearest_fast_path', 'engine_direct_calls', 'controller_link_guard')]
     cases = [(name, [HOST / 'halo_settings.c'] if name == 'dinput_lifecycle' else extra) for name, extra in cases]
     cases.append(('mobile_graphics', ['-std=c11', '-Wall', '-Wextra', '-Werror']))
+    cases.append(('frame_limit_routing', ['-DEXPECT_ROUTED=0']))
+    cases.append(('input_prompt', [*STRICT, '-fno-sanitize-recover=undefined']))
+    cases.append(('sense_prompt_context', ['-fno-sanitize-recover=undefined']))
     cases.append(('sense_pose', []))
     cases.append(('sense_head', []))
     cases.append(('sense_gestures', []))
@@ -187,6 +235,10 @@ def main():
         cases.append(('frame_limit_original', ['-w', f'-DENGINE_IOS_HOOKS={ios}',
                       '-DHALO_ARM64_FENV_FAST=1', '-frounding-math', '-ffp-contract=off',
                       *(['-I', generated] if generated else [])]))
+    # The original prompt formatter is optional in the public source checkout.
+    cases.append(('input_prompt_original', ['-w', '-DHALO_ARM64_FENV_FAST=1',
+                  '-frounding-math', '-ffp-contract=off', '-fno-sanitize-recover=undefined',
+                  *(['-I', generated] if generated else [])]))
     if generated:
         for name in ("sense_weapon_original", "sense_weapon_charge_original", "sense_physical_original", "sense_mount_original"):
             cases.append((name, ["-I", generated, "-DHALO_ARM64_FENV_FAST=1", "-frounding-math", "-ffp-contract=off"]))
@@ -242,7 +294,8 @@ def main():
             cases.append((name, extra))
         cases.append(('weapon_haptics', [HOST / 'haptics.c', HOST / 'halo_settings.c']))
     if only:
-        known = {name for name, _ in cases} | {check[0] for check in CONTROLLER_CHECKS} | set(SWIFT_CHECKS) | set(METAL_CHECKS)
+        known = ({name for name, _ in cases} | {check[0] for check in CONTROLLER_CHECKS} |
+                 set(SWIFT_CHECKS) | set(METAL_CHECKS) | {'frame-limit-sdk-routing'})
         if only - known: parser.error('unknown or unavailable checks: ' + ', '.join(sorted(only - known)))
         cases = [case for case in cases if case[0] in only]
     flags = ['-O1', '-g', '-fsanitize=address,undefined', '-fno-omit-frame-pointer'] if args.sanitize else ['-O2']
@@ -276,7 +329,7 @@ def main():
                 command += ['-ffunction-sections', '-fdata-sections', '-Wl,-dead_strip']
             if name == 'cache_read_wait': command += ['-ffunction-sections', '-fdata-sections', '-Wl,-dead_strip']
             run([*command, '-o', binary])
-            if name == 'frame_limit_original':
+            if name in ('frame_limit_original', 'input_prompt_original'):
                 result = run([binary], capture_output=True)
                 if any(line.startswith('SKIP:') for line in result.stdout.splitlines()): skipped_cases.add(name)
             else:
@@ -296,6 +349,9 @@ def main():
                 if name in only:
                     if run_swift_check(temp, name, args.sanitize): passed += 1
                     else: skipped.append(name)
+            if 'frame-limit-sdk-routing' in only:
+                if mac and run_frame_limit_sdk_check(temp): passed += 1
+                else: skipped.append('frame-limit-sdk-routing')
             print(f'PASS {passed} of {len(only)} selected checks' +
                   (f'; SKIPPED (not passed): {", ".join(skipped)}' if skipped else '') +
                   '; no headset validation implied')
@@ -547,13 +603,18 @@ def main():
             run([binary])
             run_swift_check(temp, 'foveation-geometry')
             run_swift_check(temp, 'graphics-preferences')
+            run_swift_check(temp, 'launch-preferences', args.sanitize)
+            run_frame_limit_sdk_check(temp)
             run_swift_check(temp, 'pad-input-policy', args.sanitize)
             run_swift_check(temp, 'pad-input-session', args.sanitize)
             binary = Path(temp) / 'layer-alignment-gpu'
             run(['swiftc', '-O', '-module-cache-path', Path(temp) / 'swift-cache', *alignment,
                  ROOT / 'native/EngineVision/Tests/LayerAlignmentGPUValidation.swift', '-o', binary])
             run([binary, ROOT / 'native/EngineVision/Sources/EngineImmersive.swift'])
-    print(f'PASS {len(cases)} C checks and more' + (' plus mock Objective-C, Metal and Swift checks' if mac else '') + '; no headset validation implied')
+    passed_cases = sum(name not in skipped_cases for name, _ in cases)
+    print(f'PASS {passed_cases} C checks and more' + (' plus mock Objective-C, Metal and Swift checks' if mac else '') +
+          (f'; SKIPPED (not passed): {", ".join(sorted(skipped_cases))}' if skipped_cases else '') +
+          '; no headset validation implied')
 
 if __name__ == '__main__':
     main()

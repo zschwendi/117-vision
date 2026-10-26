@@ -22,11 +22,15 @@ jobs:
       - run: python3 tools/run_source_checks.py --portable-only --sanitize
       # These source fixtures need Darwin frameworks/linker, but no iPad,
       # simulator, game payload or signing. Metal reports SKIP without a GPU.
-      - name: Mobile input and graphics source fixtures
+      # Portable prompt/routing C checks run above. The device-SDK routing
+      # probe only compiles, so run it once; missing SDKs explicitly SKIP.
+      # Spatial controller-name metadata needs macOS/SDK26 and explicitly
+      # skips on this macOS15 runner; other prompt checks still execute.
+      - name: Input and graphics source fixtures
         run: >-
           python3 -B tools/run_source_checks.py
-          --only device-input,device_messages,pad-input-policy,pad-input-session,guest_page_try,d3d9_transaction,d3d9_admission,mobile-graphics-runtime,mobile-graphics-metal
-      - name: Mobile input and graphics sanitizers
+          --only device-input,device_messages,pad-input-policy,pad-input-session,guest_page_try,d3d9_transaction,d3d9_admission,mobile-graphics-runtime,mobile-graphics-metal,launch-preferences,frame-limit-sdk-routing,input-prompt-device,controller-prompt-names
+      - name: Input and graphics sanitizers
         run: >-
           python3 -B tools/run_source_checks.py --sanitize
-          --only device-input,device_messages,pad-input-policy,pad-input-session,guest_page_try,d3d9_transaction,d3d9_admission,mobile-graphics-runtime,mobile-graphics-metal
+          --only device-input,device_messages,pad-input-policy,pad-input-session,guest_page_try,d3d9_transaction,d3d9_admission,mobile-graphics-runtime,mobile-graphics-metal,launch-preferences,input-prompt-device,controller-prompt-names

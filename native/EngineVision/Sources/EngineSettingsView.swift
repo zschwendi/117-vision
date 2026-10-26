@@ -6,7 +6,8 @@ struct EngineSettingsView: View {
     @ObservedObject var session: EngineAppSession
     @State private var showingReset = false
     @State private var path: [EngineSettingsPage] = []
-    @AppStorage("HaloRenderResolution") private var resolution = "2048x1536"
+    @AppStorage(EngineLaunchPreferences.visionResolutionKey) private var resolution = EngineLaunchPreferences.visionHighestResolution
+    @AppStorage(EngineLaunchPreferences.visionFrameRateKey) private var frameRate = EngineVisionFrameRate.maximum.rawValue
 
     var body: some View {
         NavigationStack(path: $path) {
@@ -38,12 +39,17 @@ struct EngineSettingsView: View {
                     }
                     .senseControllerTarget("settings.resolution")
                     EngineRenderResolutionStatus(engine: session.engine)
+                    Picker("Frame rate at next launch", selection: $frameRate) {
+                        ForEach(EngineVisionFrameRate.allCases, id: \.rawValue) { Text($0.title).tag($0.rawValue) }
+                    }
+                    .senseControllerTarget("settings.frameRate")
+                    EngineFrameLimitStatus(engine: session.engine)
                     NavigationLink(value: EngineSettingsPage.quality) { Label("Image Quality", systemImage: "camera.filters") }
                         .senseControllerTarget("settings.quality")
                     NavigationLink(value: EngineSettingsPage.graphics) { Label("Graphics Mods", systemImage: "sparkles") }
                         .senseControllerTarget("settings.graphics")
                 } header: { Text("Graphics") } footer: {
-                    Text("This resolution applies after you fully close and reopen the app. Halo’s Video Setup can change the current resolution while playing. Immersive mode uses this size for each rendered view; higher sizes cost more memory and GPU time. With scene upscaling (Image Quality) the world renders smaller and is upscaled to this size. Visual packs also require a restart.")
+                    Text("Resolution and frame rate apply after you fully close and reopen the app. Halo’s Video Setup can change the current resolution while playing. Immersive mode uses this size for each rendered view; higher sizes cost more memory and GPU time. With scene upscaling (Image Quality) the world renders smaller and is upscaled to this size. Maximum asks to lift the 30 fps limit Halo saves with your profile; Original limiter keeps Halo’s own limiter choice. Cutscenes keep Halo’s pace, and the frame rate you see depends on the scene and the headset. Visual packs also require a restart.")
                 }
                 Section("Your game") {
                     NavigationLink(value: EngineSettingsPage.cloud) { Label("Cloud Saves", systemImage: "icloud") }
@@ -87,6 +93,9 @@ struct EngineSettingsView: View {
             route("controller", "Controller Help", .controller),
             .init(id: "settings.resolution", title: "Resolution at next launch", value: resolution,
                   activate: { cycleResolution(1) }, adjust: cycleResolution),
+            .init(id: "settings.frameRate", title: "Frame rate at next launch",
+                  value: EngineVisionFrameRate(rawValue: frameRate)?.title ?? frameRate,
+                  activate: { cycleFrameRate(1) }, adjust: cycleFrameRate),
             route("quality", "Image Quality", .quality),
             route("graphics", "Graphics Mods", .graphics), route("cloud", "Cloud Saves", .cloud),
             route("about", "About \(EngineLibraryTheme.productName)", .about),
@@ -97,9 +106,14 @@ struct EngineSettingsView: View {
         .init(id: "settings." + id, title: title, activate: { path.append(page) })
     }
     private func cycleResolution(_ direction: Int) {
-        let values = ["1280x960", "1600x1200", "1920x1440", "2048x1536", "2560x1920"]
+        let values = EngineLaunchPreferences.visionResolutions
         let index = values.firstIndex(of: resolution) ?? 3
         resolution = values[(index + (direction < 0 ? values.count - 1 : 1)) % values.count]
+    }
+    private func cycleFrameRate(_ direction: Int) {
+        let values = EngineVisionFrameRate.allCases.map(\.rawValue)
+        let index = values.firstIndex(of: frameRate) ?? 0
+        frameRate = values[(index + (direction < 0 ? values.count - 1 : 1)) % values.count]
     }
     private func secondaryPage<Content: View>(@ViewBuilder content: () -> Content) -> some View {
         content()
@@ -115,6 +129,15 @@ private struct EngineRenderResolutionStatus: View {
     @ObservedObject var engine: EngineRuntimeModel
     var body: some View {
         LabeledContent("Current render size", value: engine.renderResolution)
+            .font(.footnote).foregroundStyle(.secondary)
+    }
+}
+
+/// What this launch asked of Halo's limiter; not a measured frame rate.
+private struct EngineFrameLimitStatus: View {
+    @ObservedObject var engine: EngineRuntimeModel
+    var body: some View {
+        LabeledContent("This launch", value: engine.frameLimit)
             .font(.footnote).foregroundStyle(.secondary)
     }
 }

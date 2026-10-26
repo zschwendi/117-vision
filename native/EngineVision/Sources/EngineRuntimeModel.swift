@@ -7,6 +7,9 @@ final class EngineRuntimeModel: ObservableObject {
     @Published var frameSequence: UInt64 = 0
     @Published var frameSize = "No engine frame"
     @Published var renderResolution = "Waiting for the engine"
+    /// What this launch asked of Halo's 30 fps limiter and whether the hook
+    /// has acted on it yet, in words; never a measured frame rate.
+    @Published var frameLimit = "Starts with Halo"
     @Published var controllerStatus = "Checking controller"
     @Published var diagnosticsStatus = "Preparing test report"
     let diagnostics = EngineDiagnostics()
@@ -52,6 +55,14 @@ final class EngineRuntimeModel: ObservableObject {
         } else if frame.width > 0, frame.height > 0 {
             renderResolution = "\(frame.width) × \(frame.height)"
         }
+        // The request, until the hook's own counts show it took effect.
+        var limit = EngineVisionFrameLimitInfo()
+        if state == ENGINEVISION_IDLE || !enginevision_frame_limit_info(&limit) { frameLimit = "Starts with Halo" }
+        else if limit.lifts_throttle == 0 { frameLimit = "Halo’s limiter unchanged" }
+        else if limit.lifted > 0 { frameLimit = "Maximum · 30 fps limit lifted" }
+        else if limit.unthrottled > 0 { frameLimit = "Maximum · Halo’s profile has no 30 fps limit" }
+        else if limit.declined > 0 { frameLimit = "Maximum requested · couldn’t lift Halo’s limit" }
+        else { frameLimit = "Maximum requested" }
         diagnostics.sample(state: state, status: status, frame: frame)
         controllerStatus = diagnostics.controllerStatus
         diagnosticsStatus = diagnostics.saveStatus

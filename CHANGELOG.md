@@ -1,5 +1,14 @@
 # Changelog
 
+## 117 controls and maximum graphics — 1.0.24 / build 124
+
+- Gameplay prompts name the active controller controls, such as Square for use/reload and Triangle for switching weapons. Accepted keyboard/mouse input restores key names; deliberate controller input selects controller names again. Existing bindings and the controls editor are unchanged.
+- The first launch selects maximum graphics once: 2560 × 1920 per rendered view with scene upscaling off on Vision Pro, and Native/Display maximum on iPad and iPhone. Later lower choices are kept.
+- Extends the tested original gameplay frame-limiter hook to Vision Pro, preserving simulation timing, cinematics, timedemo and the saved profile setting. Adds an Original limiter option and runtime request/status reporting.
+- The Vision window requests the highest current display-family rate, clamped by the system. Immersive presentation requests maximum compositor quality with configuration validation and no intentional repeats. Actual FPS still depends on the hardware and scene.
+
+See [validation](docs/VALIDATION.md) for compilation, installation and physical acceptance.
+
 ## 117 mobile controls and graphics — 1.0.23 / build 123
 
 - Adds keyboard movement and actions, captured mouse/trackpad aiming, and direct-touch aiming. A one-finger tap sends primary click; a simultaneous two-finger tap sends secondary click. Touch alone does not provide movement.

@@ -4,7 +4,7 @@
   "license": "MIT for original project code; third-party and asset notices retained",
   "scope": "Source, documentation, generated app artwork and public configuration. Retail game content, translated executable output, private registration, saves, signed apps and runtime mod packs are excluded.",
   "fileCount": 574,
-  "totalBytes": 18694245,
+  "totalBytes": 18706758,
   "files": [
     {
       "path": ".github/ISSUE_TEMPLATE/bug_report.yml",
@@ -2273,8 +2273,8 @@
     },
     {
       "path": "native/EngineVision/Tests/MobileGraphicsRuntimeValidation.m",
-      "bytes": 26060,
-      "sha256": "bb91f3a32c31028fb232b545012820a1cdb7aaa3dbdbd76605157bca39ff4e71"
+      "bytes": 38573,
+      "sha256": "3d7cfadc52fc6f3ff1e37e5411ec58d34fe523ffab2b94a4fde246eaee9e7bd0"
     },
     {
       "path": "native/EngineVision/Tests/MutableAssetPreservationMain.swift",

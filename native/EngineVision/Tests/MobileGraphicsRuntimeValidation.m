@@ -5,8 +5,52 @@
  * Each scenario runs in its own process because a launch fixes the plan once
  * per process. No game, UIKit, simulator or device is involved. */
 #define ENGINEVISION_MOBILE_GRAPHICS_TEST 1
-#include "../Sources/EngineVisionRuntime.m"
+/* The pacing scenarios run the production pacer on a fixture clock: Mach
+ * ticks move only when the scenario does engine work or the pacer waits, a
+ * CLOCK_UPTIME_RAW reading is the ticks through the timebase rounded down as
+ * the OS converts them, and mach_wait_until wakes on its deadline tick (one
+ * tick later for a deadline already passed) plus any oversleep the scenario
+ * injects. A live scheduler may hold the thread past a whole period anywhere,
+ * which the cadence rightly counts late or restarts instead of holding.
+ * Injecting such a delay reproduces the CI assertion failure; the remote
+ * runner's exact scheduling trace is unknown. Other scenarios and clocks are
+ * real. System declarations come first so only production calls are renamed. */
+#import <Foundation/Foundation.h>
+#import <Metal/Metal.h>
+#include <mach/mach.h>
+#include <mach/mach_time.h>
+#include <pthread.h>
+#include <time.h>
 #include <assert.h>
+static int pace_mock;                                /* set only in a pacing scenario's process */
+static mach_timebase_info_data_t pace_timebase;
+static uint64_t pace_ticks, pace_oversleep_ticks;    /* the oversleep is spent by the next wait */
+static unsigned pace_timebase_calls, pace_wait_calls;
+static uint64_t pace_deadline[64];
+static uint64_t pace_ns(uint64_t ticks) { return (uint64_t)((__uint128_t)ticks * pace_timebase.numer / pace_timebase.denom); }
+static uint64_t pace_clock(clockid_t clock) {
+    return pace_mock && clock == CLOCK_UPTIME_RAW ? pace_ns(pace_ticks) : clock_gettime_nsec_np(clock);
+}
+static kern_return_t pace_timebase_info(mach_timebase_info_t info) {
+    if (!pace_mock) return mach_timebase_info(info);
+    pace_timebase_calls++; *info = pace_timebase;
+    return KERN_SUCCESS;
+}
+static kern_return_t pace_wait_until(uint64_t deadline) {
+    if (!pace_mock) return mach_wait_until(deadline);
+    if (pace_wait_calls < sizeof pace_deadline / sizeof *pace_deadline) pace_deadline[pace_wait_calls] = deadline;
+    pace_wait_calls++;
+    pace_ticks = (deadline > pace_ticks ? deadline : pace_ticks + 1) + pace_oversleep_ticks;
+    pace_oversleep_ticks = 0;
+    return KERN_SUCCESS;
+}
+#define clock_gettime_nsec_np pace_clock
+#define mach_timebase_info pace_timebase_info
+#define mach_wait_until pace_wait_until
+#include "../Sources/EngineVisionRuntime.m"
+#undef mach_wait_until
+#undef mach_timebase_info
+#undef clock_gettime_nsec_np
 #include <sys/wait.h>
 
 int host_trace_imports, host_quit_requested, host_core_telemetry;
@@ -64,25 +108,37 @@ static int mobile_setenv(const char *name, const char *value, int overwrite) {
     if (fail_setenv_count > 0) { fail_setenv_count--; errno = fail_setenv_errno > 0 ? fail_setenv_errno : 0; return -1; }
     return setenv(name, value, overwrite);
 }
-static uint64_t idle_wait_ns; static unsigned idle_waits;
-void host_frame_idle_wait(uint64_t start, uint64_t end) { assert(end >= start); idle_wait_ns += end - start; idle_waits++; }
+static uint64_t idle_wait_ns, idle_last_start, idle_last_end; static unsigned idle_waits;
+void host_frame_idle_wait(uint64_t start, uint64_t end) {
+    assert(end >= start); idle_wait_ns += end - start; idle_waits++; idle_last_start = start; idle_last_end = end;
+}
 
 /* 13-inch iPad Pro, full-screen landscape window; UIKit's nativeBounds is portrait. */
 static void ipad13(void) { view_w = 2752; view_h = 2064; panel_w = 2064; panel_h = 2752; display_fps = 120; }
 static const uint64_t FRAME13 = 2752ull * 2064ull * 4ull, ARENAS = 3ull * 32 * 1024 * 1024;
 static uint64_t gpu(uint64_t f) { return f + f / 16; }
 
+static mach_timebase_info_data_t pace_request;   /* the fixture clock for the next child; 0/0 the real one */
 static void run(const char *name, void (*scenario)(void)) {
     fflush(stdout);
     pid_t child = fork(); assert(child >= 0);
     if (!child) {
         unsetenv("HALO_CMDLINE_EXTRA"); unsetenv("HALO_VIDMODE");
+        /* A fresh process, so the pacer's cached timebase is this one's. Hours
+         * to days of uptime, off the 125/3 nanosecond grid. */
+        if (pace_request.denom) { pace_mock = 1; pace_timebase = pace_request; pace_ticks = 5000000000003ull; }
         @autoreleasepool { scenario(); }
         _exit(0);
     }
     int status = 0; assert(waitpid(child, &status, 0) == child);
     if (!WIFEXITED(status) || WEXITSTATUS(status)) { fprintf(stderr, "FAIL: %s (status 0x%x)\n", name, status); exit(1); }
     printf("pass: %s\n", name);
+}
+static void run_paced(const char *name, void (*scenario)(void), uint32_t numer, uint32_t denom) {
+    char label[160]; snprintf(label, sizeof label, "%s (timebase %u/%u)", name, numer, denom);
+    pace_request = (mach_timebase_info_data_t){ numer, denom };
+    run(label, scenario);
+    pace_request = (mach_timebase_info_data_t){ 0, 0 };
 }
 static void status_says(const char *text) {
     char status[512]; enginevision_copy_status(status, sizeof status);
@@ -244,6 +300,78 @@ static void thirty_keeps_halo_throttle(void) {
 
 static void present(void) { static const uint8_t pixels[16] = {0}; metalwin_present(pixels, 2, 2); }
 
+/* ---- Paced presents on the fixture clock ------------------------------------
+ * Each step does work_ns of engine work, then presents; a held present's wait
+ * oversleeps by oversleep_ns. A held present is expected released at frame
+ * anchor's arrival plus periods cadence periods. */
+enum { PACE_FIRST, PACE_HELD, PACE_LATE, PACE_RESTART };
+static const char *const pace_outcome_name[] = { "first", "held", "late", "restart" };
+typedef struct { uint64_t work_ns, oversleep_ns; int expect, anchor; unsigned periods; } PaceStep;
+typedef struct { uint64_t arrive, release, end; unsigned first_wait, waits; int expect, outcome; } PaceSeen;
+static PaceSeen pace_seen[16]; static int pace_seen_count;
+static uint64_t pace_tick_at(uint64_t ns) {   /* the first tick reading ns or later */
+    return (uint64_t)(((__uint128_t)ns * pace_timebase.denom + pace_timebase.numer - 1) / pace_timebase.numer);
+}
+static uint64_t pace_now(void) { return pace_ns(pace_ticks); }
+static void pace_dump(const char *check, int line) {
+    const HaloMobileCadence *c = &mobile_cadence; uint64_t t0 = pace_seen_count ? pace_seen[0].arrive : 0;
+    fprintf(stderr, "pacing check failed (line %d): %s\n  timebase %u/%u period %llu ns; cadence frames %llu waits %llu "
+                    "wait %llu ns late %llu restarts %llu; idle waits %u (%llu ns); timebase queries %u; mach_wait_until calls %u\n",
+            line, check, pace_timebase.numer, pace_timebase.denom, (unsigned long long)c->period_ns,
+            (unsigned long long)c->frames, (unsigned long long)c->waits, (unsigned long long)c->wait_ns,
+            (unsigned long long)c->late, (unsigned long long)c->restarts, idle_waits, (unsigned long long)idle_wait_ns,
+            pace_timebase_calls, pace_wait_calls);
+    for (int i = 0; i < pace_seen_count; i++) {
+        const PaceSeen *s = &pace_seen[i];
+        fprintf(stderr, "  frame %d: arrive +%llu, expect %s release +%llu, saw %s, %u waits (first deadline %llu ticks), end +%llu ns\n",
+                i, (unsigned long long)(s->arrive - t0), pace_outcome_name[s->expect], (unsigned long long)(s->release - t0),
+                pace_outcome_name[s->outcome], s->waits,
+                (unsigned long long)(s->waits && s->first_wait < 64 ? pace_deadline[s->first_wait] : 0), (unsigned long long)(s->end - t0));
+    }
+}
+#define PACE_CHECK(condition) do { if (!(condition)) { pace_dump(#condition, __LINE__); abort(); } } while (0)
+
+static void pace_run(const PaceStep *steps, int count) {
+    const uint64_t period = mobile_cadence.period_ns, numer = pace_timebase.numer, denom = pace_timebase.denom;
+    PACE_CHECK(pace_mock && period && pace_seen_count + count <= 16);
+    for (int i = 0; i < count; i++) {
+        const PaceStep *step = &steps[i]; PaceSeen *seen = &pace_seen[pace_seen_count++];
+        PACE_CHECK(step->expect == PACE_HELD ? step->anchor < pace_seen_count - 1 : !step->oversleep_ns);
+        if (step->work_ns) pace_ticks = pace_tick_at(pace_now() + step->work_ns);
+        const uint64_t oversleep = step->oversleep_ns ? pace_tick_at(step->oversleep_ns) : 0;
+        const HaloMobileCadence before = mobile_cadence; const unsigned idle_before = idle_waits;
+        *seen = (PaceSeen){ .arrive = pace_now(), .first_wait = pace_wait_calls, .expect = step->expect };
+        seen->release = step->expect == PACE_HELD ? pace_seen[step->anchor].arrive + step->periods * period : seen->arrive;
+        pace_oversleep_ticks = oversleep;
+        present();
+        pace_oversleep_ticks = 0;
+        seen->end = pace_now(); seen->waits = pace_wait_calls - seen->first_wait;
+        seen->outcome = mobile_cadence.waits != before.waits ? PACE_HELD : mobile_cadence.late != before.late ? PACE_LATE
+                      : mobile_cadence.restarts != before.restarts ? PACE_RESTART : PACE_FIRST;
+        PACE_CHECK(seen->outcome == step->expect && mobile_cadence.frames == before.frames + 1);
+        if (step->expect != PACE_HELD) {
+            /* Released at once: no wait, no idle time, no time passes. */
+            PACE_CHECK(!seen->waits && idle_waits == idle_before && seen->end == seen->arrive);
+            PACE_CHECK(mobile_cadence.wait_ns == before.wait_ns);
+            continue;
+        }
+        const uint64_t release = seen->release, deadline = pace_deadline[seen->first_wait];
+        PACE_CHECK(seen->waits >= 1 && seen->first_wait + seen->waits <= 64);
+        PACE_CHECK(mobile_cadence.wait_ns == before.wait_ns + (release - seen->arrive));
+        /* The production conversion: the last Mach tick at or before the release. */
+        PACE_CHECK((__uint128_t)deadline * numer <= (__uint128_t)release * denom &&
+                   (__uint128_t)release * denom < (__uint128_t)(deadline + 1) * numer);
+        for (unsigned w = 1; w < seen->waits; w++) PACE_CHECK(pace_deadline[seen->first_wait + w] == deadline);
+        /* Woken on that tick, the hold is over if it reads the release, else it
+         * waits once more and wakes on the first tick that does. An oversleep
+         * lands past the release: one wait, ending that much late. */
+        PACE_CHECK(seen->waits == (oversleep || pace_ns(deadline) >= release ? 1u : 2u));
+        PACE_CHECK(seen->end >= release && seen->end == (oversleep ? pace_ns(deadline + oversleep) : pace_ns(pace_tick_at(release))));
+        /* The whole hold, oversleep included, is the frame's idle time. */
+        PACE_CHECK(idle_waits == idle_before + 1 && idle_last_start == seen->arrive && idle_last_end == seen->end);
+    }
+}
+
 static void presenter_screen_moves_the_producer(void) {
     ipad13(); stored_resolution = nil; stored_rate = @"display";
     assert(enginevision_mobile_prepare_launch(NULL) == 0);
@@ -251,13 +379,20 @@ static void presenter_screen_moves_the_producer(void) {
     /* The view moves to a 60 Hz external display: presenter and producer both 60. */
     assert(enginevision_mobile_presenter_fps(60) == 60);
     assert(mobile_cadence.period_ns == 1000000000ull / 60 && limit_configured == 1);
-    uint64_t start = clock_gettime_nsec_np(CLOCK_UPTIME_RAW);
-    for (int i = 0; i < 4; i++) present();
-    assert(clock_gettime_nsec_np(CLOCK_UPTIME_RAW) - start >= 3 * 16000000ull);   /* really produced at 60 */
+    /* Really produced at 60: four back-to-back presents, three held a 60 Hz period each. */
+    const PaceStep at60[] = { { 0, 0, PACE_FIRST, 0, 0 }, { 0, 0, PACE_HELD, 0, 1 }, { 0, 0, PACE_HELD, 0, 2 }, { 0, 0, PACE_HELD, 0, 3 } };
+    pace_run(at60, 4);
+    PACE_CHECK(pace_seen[3].end - pace_seen[0].arrive >= 3 * (1000000000ull / 60));
     /* A 24 Hz screen: below Halo's own 30, so the throttle is no longer lifted. */
     int calls = limit_configure_calls;
     assert(enginevision_mobile_presenter_fps(24) == 24 && limit_configured == 0 && limit_configure_calls == calls + 1);
     assert(mobile_cadence.period_ns == 1000000000ull / 24);
+    /* The live change starts a new grid at the new period, not counted as a
+     * restart: the next present goes at once, the one after is held 24 Hz. */
+    const PaceStep at24[] = { { 1000000, 0, PACE_FIRST, 0, 0 }, { 1000000, 0, PACE_HELD, 4, 1 } };
+    pace_run(at24, 2);
+    PACE_CHECK(mobile_cadence.frames == 6 && mobile_cadence.waits == 4 && !mobile_cadence.late && !mobile_cadence.restarts);
+    PACE_CHECK(pace_timebase_calls == 1);
     /* An unknown screen keeps the rate in force without reconfiguring. */
     assert(enginevision_mobile_presenter_fps(0) == 24 && limit_configure_calls == calls + 1);
     /* The same screen again: no change, no reconfiguration. */
@@ -345,27 +480,62 @@ static void embedded_vidmode_is_refused(void) {
 
 static void fast_presents_are_held_to_the_request(void) {
     view_w = 2752; view_h = 2064; panel_w = 2064; panel_h = 2752; display_fps = 100; stored_resolution = @"1280x960"; stored_rate = @"display";
-    assert(enginevision_mobile_prepare_launch(NULL) == 0);
-    uint64_t start = clock_gettime_nsec_np(CLOCK_UPTIME_RAW);
-    for (int i = 0; i < 7; i++) present();
-    uint64_t elapsed = clock_gettime_nsec_np(CLOCK_UPTIME_RAW) - start;
-    /* Seven back-to-back presents at 100 fps: six full 10 ms holds. */
-    assert(elapsed >= 59000000ull);
+    assert(enginevision_mobile_prepare_launch(NULL) == 0 && mobile_cadence.period_ns == 10000000ull);
+    /* Seven presents 3 ms of work apart at 100 fps: the first starts the grid,
+     * the other six are each held to the next 10 ms line, 7 ms each. */
+    PaceStep steps[7] = { { 3000000, 0, PACE_FIRST, 0, 0 } };
+    for (int i = 1; i < 7; i++) steps[i] = (PaceStep){ 3000000, 0, PACE_HELD, 0, (unsigned)i };
+    pace_run(steps, 7);
     EngineMobileGraphicsPlan plan;
     assert(enginevision_mobile_graphics_launched(&plan));
-    assert(plan.paced_frames == 7 && plan.paced_waits == 6 && idle_waits == 6);
-    assert(idle_wait_ns >= 55000000ull && idle_wait_ns <= elapsed);
+    PACE_CHECK(plan.paced_frames == 7 && plan.paced_waits == 6 && idle_waits == 6);
+    PACE_CHECK(!plan.paced_late && !plan.paced_restarts && pace_timebase_calls == 1);
+    uint64_t held = 0; for (int i = 1; i < 7; i++) held += pace_seen[i].end - pace_seen[i].arrive;
+    PACE_CHECK(pace_seen[6].end - pace_seen[0].arrive >= 60000000ull && idle_wait_ns == held);
+    /* Exact on the unit timebase; on the fractional ones a release between
+     * ticks is woken a tick early and waited for once more. */
+    if (pace_timebase.numer == pace_timebase.denom)
+        PACE_CHECK(plan.paced_wait_ns == 42000000ull && idle_wait_ns == 42000000ull && pace_wait_calls == 6);
+    else PACE_CHECK(pace_wait_calls > 6);
     assert(plan.current_width == 2 && plan.current_height == 2 && plan.memory_current_bytes > 0);
     EngineVisionFrameInfo info; assert(enginevision_frame_info(&info) && info.sequence == 7);
+}
+
+static void late_presents_recover(void) {
+    view_w = 2752; view_h = 2064; panel_w = 2064; panel_h = 2752; display_fps = 100; stored_resolution = @"1280x960"; stored_rate = @"display";
+    assert(enginevision_mobile_prepare_launch(NULL) == 0 && mobile_cadence.period_ns == 10000000ull);
+    /* 3 ms of work per frame at 100 fps, with three injected oversleeps:
+     * 4 ms fits in the next frame's slack, which is held 3 ms to the grid;
+     * 9 ms makes the next frame 2 ms late, sent at once with the grid kept;
+     * 20 ms makes it more than a period late, which restarts the grid there. */
+    const uint64_t W = 3000000ull;
+    const PaceStep steps[] = {
+        { W, 0, PACE_FIRST, 0, 0 },
+        { W, 4000000, PACE_HELD, 0, 1 }, { W, 0, PACE_HELD, 0, 2 },
+        { W, 9000000, PACE_HELD, 0, 3 }, { W, 0, PACE_LATE, 0, 0 }, { W, 0, PACE_HELD, 0, 5 },
+        { W, 20000000, PACE_HELD, 0, 6 }, { W, 0, PACE_RESTART, 0, 0 }, { W, 0, PACE_HELD, 7, 1 }, { W, 0, PACE_HELD, 7, 2 },
+    };
+    pace_run(steps, 10);
+    EngineMobileGraphicsPlan plan; assert(enginevision_mobile_graphics_launched(&plan));
+    PACE_CHECK(plan.paced_frames == 10 && plan.paced_waits == 7 && idle_waits == 7);
+    PACE_CHECK(plan.paced_late == 1 && plan.paced_restarts == 1 && pace_timebase_calls == 1);
+    /* Holds of 7, 3, 7, 5, 7, 7 and 7 ms; idle adds the 4, 9 and 20 ms overslept. */
+    if (pace_timebase.numer == pace_timebase.denom)
+        PACE_CHECK(plan.paced_wait_ns == 43000000ull && idle_wait_ns == 76000000ull && pace_wait_calls == 7);
+    EngineVisionFrameInfo info; assert(enginevision_frame_info(&info) && info.sequence == 10);
 }
 
 static void slow_presents_are_never_held(void) {
     ipad13(); stored_resolution = nil; stored_rate = @"display";
     assert(enginevision_mobile_prepare_launch(NULL) == 0);
-    /* Halo's own limiter at 30 fps under a 120 fps request. */
-    for (int i = 0; i < 5; i++) { present(); usleep(33000); }
+    /* Halo's own limiter at 30 fps under a 120 fps request: every frame is
+     * more than a period late, so each restarts the grid and none waits. */
+    PaceStep steps[5] = { { 0, 0, PACE_FIRST, 0, 0 } };
+    for (int i = 1; i < 5; i++) steps[i] = (PaceStep){ 1000000000ull / 30, 0, PACE_RESTART, 0, 0 };
+    pace_run(steps, 5);
     EngineMobileGraphicsPlan plan; assert(enginevision_mobile_graphics_launched(&plan));
     assert(plan.paced_frames == 5 && plan.paced_waits == 0 && idle_waits == 0);
+    PACE_CHECK(plan.paced_restarts == 4 && !plan.paced_late && !pace_wait_calls && !pace_timebase_calls);
 }
 
 static void invalid_frames_are_not_paced(void) {
@@ -373,6 +543,7 @@ static void invalid_frames_are_not_paced(void) {
     assert(enginevision_mobile_prepare_launch(NULL) == 0);
     metalwin_present(NULL, 2, 2); metalwin_present((const uint8_t[16]){0}, 9000, 2); metalwin_present((const uint8_t[16]){0}, 0, 2);
     EngineMobileGraphicsPlan plan; assert(enginevision_mobile_graphics_launched(&plan) && plan.paced_frames == 0);
+    PACE_CHECK(!pace_wait_calls && !idle_waits);
     EngineVisionFrameInfo info; assert(!enginevision_frame_info(&info));
 }
 
@@ -404,10 +575,17 @@ int main(void) {
     run("an unknown window falls back to 1600x1200 at 60", unknown_window_falls_back);
     run("a 24 Hz display requests 24 and keeps Halo's throttle", low_rate_display_is_respected);
     run("a 30 fps choice keeps Halo's throttle", thirty_keeps_halo_throttle);
-    run("the presenter's screen moves producer cadence and throttle lift", presenter_screen_moves_the_producer);
-    run("fast flat presents are held to the request", fast_presents_are_held_to_the_request);
-    run("slow flat presents are never held", slow_presents_are_never_held);
-    run("invalid frames are not paced or published", invalid_frames_are_not_paced);
+    /* Pacing on the fixture clock: a unit, the arm64 and a timebase where
+     * neither periods nor releases fall on ticks. */
+    run_paced("the presenter's screen moves producer cadence and throttle lift", presenter_screen_moves_the_producer, 125, 3);
+    run_paced("fast flat presents are held to the request", fast_presents_are_held_to_the_request, 1, 1);
+    run_paced("fast flat presents are held to the request", fast_presents_are_held_to_the_request, 125, 3);
+    run_paced("fast flat presents are held to the request", fast_presents_are_held_to_the_request, 7, 3);
+    run_paced("late and overslept presents recover the grid", late_presents_recover, 1, 1);
+    run_paced("late and overslept presents recover the grid", late_presents_recover, 125, 3);
+    run_paced("late and overslept presents recover the grid", late_presents_recover, 7, 3);
+    run_paced("slow flat presents are never held", slow_presents_are_never_held, 125, 3);
+    run_paced("invalid frames are not paced or published", invalid_frames_are_not_paced, 125, 3);
     run("enginevision_start fixes the plan first", start_fixes_the_plan_before_the_engine_thread);
     run("Display maximum follows a faster screen", display_maximum_follows_a_faster_screen);
     run("an unknown launch display follows the screen", unknown_launch_display_follows_the_screen);

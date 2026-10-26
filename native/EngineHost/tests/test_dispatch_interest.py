@@ -13,9 +13,12 @@ def macro_list(name):
     body = header.split(f'#define {name}(X)')[1].split('\n\n')[0]
     return {int(x, 16) for x in re.findall(r'X\(0x([0-9a-fA-F]+)u\)', body)}
 hooks, trace = macro_list('ENGINE_HOOK_ADDRESSES'), macro_list('ENGINE_TRACE_HOOK_ADDRESSES')
-assert hooks and trace and not hooks & trace
+# iOS-only behavioural hooks (frame_limit_hooks.inc) route only in iOS builds.
+ios = macro_list('ENGINE_IOS_HOOK_ADDRESSES')
+assert hooks and trace and ios and not hooks & trace and not ios & (hooks | trace)
+hooks |= ios
 files = ['a10_control.inc','a10_gamepad.inc','hsc_trace.inc','audio_ownership_trace.inc',
-         'model_capture_hooks.inc','panorama_hooks.inc','sense_weapon_hooks.inc','sense_grenade.inc','sense_grenade_hold.inc','sense_body_hooks.inc','sense_world_model_override.inc','sense_dual_render.inc','sense_reticle_offhand.inc','dual_wield.inc','panorama_overlay_scope.h','native_leaves.h','frame_pacing_hooks.inc']
+         'model_capture_hooks.inc','panorama_hooks.inc','sense_weapon_hooks.inc','sense_grenade.inc','sense_grenade_hold.inc','sense_body_hooks.inc','sense_world_model_override.inc','sense_dual_render.inc','sense_reticle_offhand.inc','dual_wield.inc','panorama_overlay_scope.h','native_leaves.h','frame_pacing_hooks.inc','frame_limit_hooks.inc']
 required, trace_only = {0x004C6E80}, set()
 for name in files:
     text = (root/name).read_text()
@@ -33,6 +36,7 @@ assert not wrongly_trace, 'Behavioural hooks in the trace list, which goes direc
 table = src.split('static Override overrides[] = {')[1].split('};')[0]
 overridden = {int(x, 16) for x in re.findall(r'\{\s*0x([0-9a-fA-F]+)u', table)} - {0xFFFFFFFF}
 assert overridden and not overridden - hooks, 'Override table entries missing from engine_hooks.h: '+str([hex(x) for x in sorted(overridden - hooks)])
+assert 'ENGINE_IOS_HOOK_ADDRESSES(DISPATCH_HOOK_ADDRESS)' in src and 'ENGINE_IOS_HOOK_ADDRESSES(ENGINE_HOOK_CASE)' in header
 assert 'ENGINE_HOOK_ADDRESSES(DISPATCH_HOOK_ADDRESS)' in src and 'ENGINE_TRACE_HOOK_ADDRESSES(DISPATCH_HOOK_ADDRESS)' in src
 assert 'dispatch_interest_add(overrides[i].addr)' in src
 print(f'engine_hooks.h routes all {len(required)} hook addresses and {len(overridden)} overrides; '

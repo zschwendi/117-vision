@@ -175,6 +175,9 @@ typedef struct { uint32_t addr; HostShim fn; const char *name; } Override;
 /* After every world-model prepare helper (body; pickup when merged). */
 #include "sense_world_model_override.inc"
 #include "frame_pacing_hooks.inc"
+#if ENGINE_IOS_HOOKS
+#include "frame_limit_hooks.inc"
+#endif
 #include "model_capture_hooks.inc"
 #include "audio_ownership_trace.inc"
 #include "native_leaves.h"
@@ -230,6 +233,9 @@ static uint64_t dispatch_interest[1024];
 #define DISPATCH_HOOK_ADDRESS(a) a,
 static const uint32_t dispatch_hook_addresses[] = {
     ENGINE_HOOK_ADDRESSES(DISPATCH_HOOK_ADDRESS)
+#if ENGINE_IOS_HOOKS
+    ENGINE_IOS_HOOK_ADDRESSES(DISPATCH_HOOK_ADDRESS)
+#endif
     ENGINE_TRACE_HOOK_ADDRESSES(DISPATCH_HOOK_ADDRESS)
 };
 #undef DISPATCH_HOOK_ADDRESS
@@ -245,6 +251,9 @@ __attribute__((constructor)) static void dispatch_interest_init(void) {
 int engine_dispatch_override(EngineCPU *cpu, uint32_t address) {
     if (!(dispatch_interest[(address & 0xffffu) >> 6] & (UINT64_C(1) << (address & 63u)))) return 0;
     if (host_native_leaf_dispatch(cpu, address)) return 1;
+#if ENGINE_IOS_HOOKS
+    if (host_frame_limit_dispatch(cpu, address)) return 1;
+#endif
     if ((address == 0x005540C0u || address == 0x00553C40u || address == 0x00553F10u) && ov_native_gather(cpu, address)) return 1;
     /* Apply after profile selection/replacement on the next main-loop tick.
      * In-memory unlock only: existing checkpoints and save files are untouched. */

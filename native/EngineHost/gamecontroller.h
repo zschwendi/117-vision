@@ -145,6 +145,11 @@ uint64_t hostgc_app_input_begin(void);
 int hostgc_app_input_renew(uint64_t token);
 void hostgc_app_input_end(uint64_t token);
 int hostgc_app_input_blocked(void);
+/* Only whether a lease token is currently held (expiry applied). Unlike
+ * hostgc_app_input_blocked it ignores the controller handback wait, which
+ * needs a connected neutral controller; the hardware keyboard/mouse source
+ * (device_input.h) gates on this and keeps its own release fence. */
+int hostgc_app_input_lease_active(void);
 uint64_t hostgc_app_input_epoch(void); /* invalidates queued controller events */
 int hostgc_app_input_filter(HostGCSnapshot *snapshot); /*1 if neutralized*/
 

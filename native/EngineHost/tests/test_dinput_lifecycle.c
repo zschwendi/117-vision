@@ -35,6 +35,7 @@ bool hostgc_connected(void) { return controller.connected; }
 /* Lease behavior is exercised with the actual ObjC bridge in test_app_input.m. */
 int hostgc_app_input_filter(HostGCSnapshot *p) { (void)p; return 0; }
 int hostgc_app_input_blocked(void) { return 0; }
+int hostgc_app_input_lease_active(void) { return 0; }
 uint64_t hostgc_app_input_epoch(void) { return 1; }
 
 static uint32_t call(HostShim fn, unsigned count, ...) {

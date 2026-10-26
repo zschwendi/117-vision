@@ -94,6 +94,11 @@ int hostgc_app_input_blocked(void) {
     int blocked = g_app_token || g_app_wait_release;
     pthread_mutex_unlock(&g_app_lock); return blocked;
 }
+int hostgc_app_input_lease_active(void) {
+    pthread_mutex_lock(&g_app_lock); app_input_expire_locked(app_input_now());
+    int active = g_app_token != 0;
+    pthread_mutex_unlock(&g_app_lock); return active;
+}
 uint64_t hostgc_app_input_epoch(void) {
     pthread_mutex_lock(&g_app_lock); uint64_t epoch = g_app_epoch;
     pthread_mutex_unlock(&g_app_lock); return epoch;

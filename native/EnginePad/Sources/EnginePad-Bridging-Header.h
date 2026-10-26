@@ -1,5 +1,6 @@
 #include "EngineVisionBridge.h"
 #include "gamecontroller.h"
+#include "device_input.h"
 #include "haptics.h"
 #include "halo_settings.h"
 

@@ -1,5 +1,14 @@
 # Changelog
 
+## 117 mobile controls and graphics — 1.0.23 / build 123
+
+- Adds keyboard movement and actions, captured mouse/trackpad aiming, and direct-touch aiming. A one-finger tap sends primary click; a simultaneous two-finger tap sends secondary click. Touch alone does not provide movement.
+- Releases held input when capture, focus, device or app ownership changes. The library and in-game controls remain available when the pointer is released.
+- Adds Native resolution, fitted to a 4:3 picture inside the current window, and Display maximum, 60 fps and 30 fps targets. Resolution changes apply on a fresh app launch; actual frame rate depends on the device and scene.
+- Removes the mobile gameplay frame limiter for higher requested rates while preserving simulation timing and the saved profile setting. Adds checked resolution admission and rollback for failed back-buffer allocations.
+
+Build 123 has not been installed or played on a device. See [validation](docs/VALIDATION.md) for local build and test evidence. Bundle identities and existing cloud/save locations are preserved.
+
 ## 117 source update — 1.0.22 / build 122
 
 Branding-only source update. The visible app name changes from Keyship to 117 and the repository moves to `zschwendi/117-vision`. Bundle identifiers, iCloud container, save locations and runtime behavior are unchanged. This version has not been built, installed or device-tested; the most recent built and installed app recorded here is Keyship build 121.

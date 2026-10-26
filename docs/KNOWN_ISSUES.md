@@ -1,7 +1,8 @@
 # 117 current limitations
 
 - Only the supported retail Halo PC 1.10 executable is implemented.
-- iPad/iPhone gameplay requires a controller; touch is for the native interface.
+- iPad/iPhone movement requires a controller or keyboard. Touch supports aiming and click gestures, not a complete touch gamepad. Magic Keyboard, pointer capture and direct-screen gestures still need physical-device acceptance.
+- Mobile native resolution fits a 4:3 game viewport inside the display; it does not stretch the HUD into widescreen. Resolution changes require a fresh app launch. The maximum-refresh choice requests the display's supported rate, not a guaranteed sustained frame rate.
 - Save sync currently runs only before engine startup in a fresh process. After playing, fully close and reopen the app, then wait for sync before switching devices. Returning to the launcher alone is not a safe sync boundary.
 - Grenades retain the game's original throw/keyframe delay.
 - The held grenade preview disappears on release before the original throw finishes; the transition still needs headset tuning.

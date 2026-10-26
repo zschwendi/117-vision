@@ -96,8 +96,10 @@ Set the application's bundle identifier to one you control, select your
 team, and enable automatic signing in Xcode. The public default,
 `org.example.halovision`, is a placeholder. The CLI normally performs unsigned
 builds; an Xcode development run supplies a profile for your account.
-The project version is 1.0.22 (build 122), a source-only branding update of
-the Build121 (1.0.21) app. Generated app artwork is included;
+The project version is 1.0.23 (build 123), adding mobile keyboard, pointer and
+touch input and native-resolution/display-refresh controls. See
+[validation](VALIDATION.md) for build and physical-device acceptance.
+Generated app artwork is included;
 see [artwork provenance](assets/README.md).
 
 ### Configure your own iCloud container

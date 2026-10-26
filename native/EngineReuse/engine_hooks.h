@@ -41,6 +41,23 @@
     X(0x00552DE0u) /* BSP material walk: the two with only a `ret` callback run natively */ \
     X(0x005540C0u) X(0x00553C40u) X(0x00553F10u) /* exact light/shadow gather loops */
 
+/* iOS (not visionOS) only: Halo's time update, where the display-rate request
+ * lifts the saved 30 fps throttle for one call (frame_limit_hooks.inc). Other
+ * platforms keep their direct call, byte for byte. */
+#define ENGINE_IOS_HOOK_ADDRESSES(X) \
+    X(0x004C9F90u) /* time update and 30 fps limiter */
+
+#if defined(__APPLE__)
+#include <TargetConditionals.h>
+#endif
+#ifndef ENGINE_IOS_HOOKS
+#if defined(TARGET_OS_IOS) && TARGET_OS_IOS && !(defined(TARGET_OS_VISION) && TARGET_OS_VISION)
+#define ENGINE_IOS_HOOKS 1
+#else
+#define ENGINE_IOS_HOOKS 0
+#endif
+#endif
+
 /* HALO_A10_TRACE logging only. 00511F30 is a per-draw render call, so in
  * release these go direct; build the chunks with ENGINE_TRACE_HOOKS=1 to see
  * every call in the trace rather than only the indirect ones. 00552DE0, the
@@ -57,6 +74,10 @@ static inline int engine_hooked(uint32_t address) {
 #define ENGINE_HOOK_CASE(a) case a:
     ENGINE_HOOK_ADDRESSES(ENGINE_HOOK_CASE)
         return 1;
+#if ENGINE_IOS_HOOKS
+    ENGINE_IOS_HOOK_ADDRESSES(ENGINE_HOOK_CASE)
+        return 1;
+#endif
 #if ENGINE_TRACE_HOOKS
     ENGINE_TRACE_HOOK_ADDRESSES(ENGINE_HOOK_CASE)
         return 1;

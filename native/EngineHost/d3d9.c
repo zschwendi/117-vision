@@ -25,6 +25,7 @@ pthread_t host_present_thread; int host_present_thread_set;
 #define D3D_OK 0
 #define D3DERR_NOTAVAILABLE 0x8876086Au
 #define D3DERR_INVALIDCALL  0x8876086Cu
+#define D3DERR_OUTOFVIDEOMEMORY 0x8876017Cu
 #define FMT_X8R8G8B8 22
 
 typedef struct { const char *name; uint8_t argc; } Method;   /* argc includes `this` */
@@ -224,6 +225,30 @@ static void fill_caps(uint32_t c) {
 static void fill_mode(uint32_t m, uint32_t w, uint32_t h) { S32(m, w); S32(m + 4, h); S32(m + 8, 60); S32(m + 12, FMT_X8R8G8B8); }
 static const uint32_t modes[][2] = { {640,480},{800,600},{1024,768},{1280,720},{1280,960},{1600,900},{1600,1200},{1920,1080},{1920,1440},{2560,1920} };
 static uint32_t backbuffer_w = 640, backbuffer_h = 480;
+/* Every implicit back buffer and depth surface CreateDevice or Reset makes:
+ * the renderer's hard bound everywhere (64 ... 8192, so no 32-bit surface
+ * size can wrap), and on iPad/iPhone the one launch bound every other back
+ * buffer there passes (mobile_graphics.h). Checked before any state moves. */
+#if defined(__APPLE__)
+#include <TargetConditionals.h>
+#endif
+#ifndef HALO_D3D9_MOBILE_POLICY
+#if defined(TARGET_OS_IOS) && TARGET_OS_IOS && !(defined(TARGET_OS_VISION) && TARGET_OS_VISION)
+#define HALO_D3D9_MOBILE_POLICY 1
+#else
+#define HALO_D3D9_MOBILE_POLICY 0
+#endif
+#endif
+#if HALO_D3D9_MOBILE_POLICY
+#include "mobile_graphics.h"
+#endif
+static int d3d9_backbuffer_admitted(uint32_t w, uint32_t h) {
+    if (w < 64 || h < 64 || w > 8192 || h > 8192) return 0;
+#if HALO_D3D9_MOBILE_POLICY
+    if (!halo_mobile_size_allowed(w, h)) return 0;
+#endif
+    return 1;
+}
 
 static void unimplemented(EngineCPU *cpu, ComClass *c, int i) {
     static uint32_t seen[64]; uint32_t key = (uint32_t)(c - classes) * 256u + (uint32_t)i; int found = 0;
@@ -235,6 +260,16 @@ static uint32_t make_surface(uint32_t w, uint32_t h, uint32_t fmt, uint32_t usag
     D3DObj *s = obj_new(K_SURFACE); s->width = w; s->height = h; s->format = fmt; s->usage = usage; s->type = 1;
     uint32_t pitch; s->size = level_size(fmt, w, h, &pitch); s->data_capacity = s->size ? s->size : 16;
     s->data = guest_page_alloc(s->data_capacity); return s->guest;
+}
+/* Guest storage an implicit surface of this size and format needs. */
+static uint32_t surface_capacity(uint32_t fmt, uint32_t w, uint32_t h) {
+    uint32_t pitch, size = level_size(fmt, w, h, &pitch); return size ? size : 16;
+}
+/* An implicit surface over storage already staged for it (CreateDevice). */
+static uint32_t make_staged_surface(uint32_t w, uint32_t h, uint32_t fmt, uint32_t usage, uint32_t data) {
+    D3DObj *s = obj_new(K_SURFACE); s->width = w; s->height = h; s->format = fmt; s->usage = usage; s->type = 1;
+    uint32_t pitch; s->size = level_size(fmt, w, h, &pitch); s->data_capacity = s->size ? s->size : 16;
+    s->data = data; return s->guest;
 }
 static D3DObj *the_device;
 static uint32_t current_depth_guest; /* independently owned depth binding */
@@ -367,11 +402,22 @@ static void stateblock_trace_event(EngineCPU *cpu,unsigned action,uint32_t block
         (unsigned long long)bindings,(unsigned long long)matrices,(unsigned long long)constants,semantics);
 }
 
-static void reset_implicit_surface(D3DObj *surface,uint32_t width,uint32_t height,uint32_t format,uint32_t usage){
+/* Reset is transactional: replacement guest storage is staged with the
+ * non-fatal allocator first, then the renderer's targets are replaced (which
+ * itself keeps the old ones on failure), and only then is anything published.
+ * A failure at any step frees what was staged and leaves the old mode, its
+ * surfaces, their storage and contents, and the renderer exactly as they were. */
+static int stage_implicit_surface(const D3DObj *surface,uint32_t capacity,uint32_t *staged){
+    *staged=0;
+    if(surface->data&&surface->data_capacity>=capacity)return 1;   /* reuses its own storage */
+    *staged=guest_page_try_alloc(capacity);
+    return *staged!=0;
+}
+static void reset_implicit_surface(D3DObj *surface,uint32_t width,uint32_t height,uint32_t format,uint32_t usage,uint32_t staged){
     uint32_t pitch,size=level_size(format,width,height,&pitch);uint32_t capacity=size?size:16;
-    if(!surface->data||surface->data_capacity<capacity){
+    if(staged){
         uint32_t old_data=surface->data;
-        surface->data=guest_page_alloc(capacity);surface->data_capacity=capacity;
+        surface->data=staged;surface->data_capacity=capacity;
         if(old_data)guest_page_free(old_data);
     }
     memset(GPTR(surface->data),0,size);surface->width=width;surface->height=height;surface->format=format;
@@ -382,15 +428,32 @@ static uint32_t reset_device(D3DObj *device,uint32_t pp){
     uint32_t requested_w=G32(pp),requested_h=G32(pp+4);
     uint32_t width=requested_w?requested_w:backbuffer_w,height=requested_h?requested_h:backbuffer_h;
     if(width<64||height<64||width>8192||height>8192)return D3DERR_INVALIDCALL;
+#if HALO_D3D9_MOBILE_POLICY
+    if(!d3d9_backbuffer_admitted(width,height)){host_log("d3d9 Reset refused: %ux%u is outside the admitted back-buffer bound",width,height);return D3DERR_INVALIDCALL;}
+#endif
     D3DObj *backbuffer=obj_from_guest(device->data),*depth=obj_from_guest(device->level_surface[0]);
     if(!backbuffer||backbuffer->kind!=K_SURFACE||!depth||depth->kind!=K_SURFACE)return D3DERR_INVALIDCALL;
+    uint32_t backbuffer_format=G32(pp+8)?G32(pp+8):FMT_X8R8G8B8,depth_format=G32(pp+40)?G32(pp+40):75;
+    uint32_t staged_color=0,staged_depth=0;
+    if(!stage_implicit_surface(backbuffer,surface_capacity(backbuffer_format,width,height),&staged_color)){
+        host_log("d3d9 Reset to %ux%u refused: no guest pages for the back buffer; the current mode is kept",width,height);
+        return D3DERR_OUTOFVIDEOMEMORY;
+    }
+    if(!stage_implicit_surface(depth,surface_capacity(depth_format,width,height),&staged_depth)){
+        if(staged_color)guest_page_free(staged_color);
+        host_log("d3d9 Reset to %ux%u refused: no guest pages for the depth surface; the current mode is kept",width,height);
+        return D3DERR_OUTOFVIDEOMEMORY;
+    }
     /* Preserve the renderer and its immutable pipeline/texture caches, but replace
      * its size-dependent color and depth targets before publishing new dimensions. */
-    if(backbuffer->renderer&&mr_resize(backbuffer->renderer,(int)width,(int)height))return D3DERR_NOTAVAILABLE;
-    uint32_t backbuffer_format=G32(pp+8);if(!backbuffer_format){backbuffer_format=FMT_X8R8G8B8;S32(pp+8,backbuffer_format);}
-    uint32_t depth_format=G32(pp+40);if(!depth_format)depth_format=75;
-    reset_implicit_surface(backbuffer,width,height,backbuffer_format,1);
-    reset_implicit_surface(depth,width,height,depth_format,2);
+    if(backbuffer->renderer&&mr_resize(backbuffer->renderer,(int)width,(int)height)){
+        if(staged_color)guest_page_free(staged_color);
+        if(staged_depth)guest_page_free(staged_depth);
+        return D3DERR_NOTAVAILABLE;
+    }
+    if(!G32(pp+8))S32(pp+8,backbuffer_format);
+    reset_implicit_surface(backbuffer,width,height,backbuffer_format,1,staged_color);
+    reset_implicit_surface(depth,width,height,depth_format,2,staged_depth);
     backbuffer_w=width;backbuffer_h=height;S32(pp,width);S32(pp+4,height);
     binding_replace(&current_rt_guest,device->data);binding_replace(&current_depth_guest,device->level_surface[0]);render_defaults(width,height);lighting_defaults();host_panorama_invalidate();
     host_log("d3d9 Reset: %ux%u bbfmt=%u dsfmt=%u",width,height,backbuffer_format,depth_format);
@@ -476,11 +539,31 @@ static void method_d3d(EngineCPU *cpu, D3DObj *o, int i) {
     case 12: RET_STDCALL(D3D_OK, 6); case 13: RET_STDCALL(D3D_OK, 5);
     case 14: fill_caps(ARG(3)); RET_STDCALL(D3D_OK, 4);
     case 15: RET_STDCALL(0x50001, 2);
-    case 16: { uint32_t pp = ARG(5), out = ARG(6); D3DObj *d = obj_new(K_DEVICE); the_device = d;
-        backbuffer_w = G32(pp) >= 64 ? G32(pp) : 640; backbuffer_h = G32(pp + 4) >= 64 ? G32(pp + 4) : 480; S32(pp, backbuffer_w); S32(pp + 4, backbuffer_h); if (!G32(pp + 8)) S32(pp + 8, FMT_X8R8G8B8);
+    case 16: { uint32_t pp = ARG(5), out = ARG(6);
+        if (!pp) RET_STDCALL(D3DERR_INVALIDCALL, 7);
+        uint32_t requested_w = G32(pp) >= 64 ? G32(pp) : 640, requested_h = G32(pp + 4) >= 64 ? G32(pp + 4) : 480;
+        if (!d3d9_backbuffer_admitted(requested_w, requested_h)) {
+            /* Refused before any device, surface or size exists. */
+            host_log("d3d9 CreateDevice refused: %ux%u is outside the admitted back-buffer bound", requested_w, requested_h);
+            if (out) S32(out, 0);
+            RET_STDCALL(D3DERR_NOTAVAILABLE, 7);
+        }
+        /* Stage both implicit surfaces' storage before any object exists. */
+        const uint32_t depth_format = G32(pp + 40) ? G32(pp + 40) : 75;
+        uint32_t color_data = guest_page_try_alloc(surface_capacity(FMT_X8R8G8B8, requested_w, requested_h));
+        uint32_t depth_data = color_data ? guest_page_try_alloc(surface_capacity(depth_format, requested_w, requested_h)) : 0;
+        if (!color_data || !depth_data) {
+            if (color_data) guest_page_free(color_data);
+            host_log("d3d9 CreateDevice refused: no guest pages for a %ux%u %s", requested_w, requested_h, color_data ? "depth surface" : "back buffer");
+            if (out) S32(out, 0);
+            RET_STDCALL(D3DERR_OUTOFVIDEOMEMORY, 7);
+        }
+        D3DObj *d = obj_new(K_DEVICE); the_device = d;
+        backbuffer_w = requested_w; backbuffer_h = requested_h; S32(pp, backbuffer_w); S32(pp + 4, backbuffer_h); if (!G32(pp + 8)) S32(pp + 8, FMT_X8R8G8B8);
         host_log("d3d9 CreateDevice pp: w=%u h=%u bbfmt=%u bbcount=%u swap=%u hwnd=%08X windowed=%u autods=%u dsfmt=%u flags=%08X refresh=%u present=%u",
                  G32(pp),G32(pp+4),G32(pp+8),G32(pp+12),G32(pp+24),G32(pp+28),G32(pp+32),G32(pp+36),G32(pp+40),G32(pp+44),G32(pp+48),G32(pp+52));
-        d->data = make_surface(backbuffer_w, backbuffer_h, FMT_X8R8G8B8, 1); d->level_surface[0] = make_surface(backbuffer_w, backbuffer_h, G32(pp + 40) ? G32(pp + 40) : 75, 2);
+        d->data = make_staged_surface(backbuffer_w, backbuffer_h, FMT_X8R8G8B8, 1, color_data);
+        d->level_surface[0] = make_staged_surface(backbuffer_w, backbuffer_h, depth_format, 2, depth_data);
         binding_replace(&current_rt_guest,d->data);binding_replace(&current_depth_guest,d->level_surface[0]);
         render_defaults(backbuffer_w,backbuffer_h); lighting_defaults();
         if (!window_ready) { window_ready = (metalwin_init((int)backbuffer_w, (int)backbuffer_h, "Halo Vision Pro") == 0) ? 1 : -1; host_log("metalwin_init %s", window_ready==1?"ok":"unavailable (no main runloop?)"); if(window_ready==1) host_window_shown=1; }

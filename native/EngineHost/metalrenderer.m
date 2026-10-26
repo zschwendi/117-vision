@@ -183,9 +183,23 @@ void mr_texture_cache_counters(uint64_t *hits,uint64_t *uploads,uint64_t *evicti
 /* Why the most recent committed command buffer failed, if it did. */
 static char g_commit_err[256];
 const char *mr_last_commit_error(void) { return g_commit_err; }
+/* Live attachment accounting for the iPad/iPhone report (mr_target_memory). */
+#if defined(__APPLE__)
+#include <TargetConditionals.h>
+#endif
+#ifndef MR_TARGET_MEMORY
+#if defined(TARGET_OS_IOS) && TARGET_OS_IOS && !(defined(TARGET_OS_VISION) && TARGET_OS_VISION)
+#define MR_TARGET_MEMORY 1
+#else
+#define MR_TARGET_MEMORY 0
+#endif
+#endif
 struct mr_context {
     mr_shared *s;
     id<MTLTexture> target; id<MTLTexture> depth_target;
+#if MR_TARGET_MEMORY
+    uint64_t target_bytes;   /* attachments' allocatedSize, counted in g_target_bytes */
+#endif
     uint32_t target_id;                     /* shared texture-table slot aliasing the color target */
     int w, h, vx, vy, vw, vh;
     int overlay_target;
@@ -293,6 +307,25 @@ static void set_errorf(const char *format, ...) {
     vsnprintf(g_errbuf, sizeof g_errbuf, format, args); va_end(args); g_err = g_errbuf;
 }
 
+/* Every live context's colour and depth attachments, for the iPad/iPhone
+ * report: written by the engine thread, read from any. Counted only where
+ * MR_TARGET_MEMORY is on (iOS, or a test); elsewhere this reads zero and the
+ * target paths are unchanged. */
+static _Atomic uint64_t g_target_bytes;
+static _Atomic uint32_t g_target_count;
+uint64_t mr_target_memory(uint32_t *targets) {
+    if (targets) *targets = atomic_load_explicit(&g_target_count, memory_order_relaxed);
+    return atomic_load_explicit(&g_target_bytes, memory_order_relaxed);
+}
+#if MR_TARGET_MEMORY
+static void target_bytes_set(mr_context *c, uint64_t bytes) {
+    if (!c->target_bytes && bytes) atomic_fetch_add_explicit(&g_target_count, 1, memory_order_relaxed);
+    if (c->target_bytes && !bytes) atomic_fetch_sub_explicit(&g_target_count, 1, memory_order_relaxed);
+    atomic_fetch_add_explicit(&g_target_bytes, bytes, memory_order_relaxed);
+    atomic_fetch_sub_explicit(&g_target_bytes, c->target_bytes, memory_order_relaxed);
+    c->target_bytes = bytes;
+}
+#endif
 const char *mr_last_error(void) { return g_err; }
 int mr_width(const mr_context *c) { return c ? c->w : 0; }
 int mr_height(const mr_context *c) { return c ? c->h : 0; }
@@ -318,6 +351,9 @@ static int make_target(mr_context *c, int w, int h, int pw, int ph) {
     if (!c->target_id) { for (uint32_t i = 1; i < MR_MAX_TEX; ++i) if (!s->textures[i]) { c->target_id = i; break; } }
     if (!c->target_id) { g_err = "texture table full"; return -1; }
     c->target = target; c->depth_target = depth_target;
+#if MR_TARGET_MEMORY
+    target_bytes_set(c, (uint64_t)target.allocatedSize + (uint64_t)depth_target.allocatedSize);
+#endif
     s->textures[c->target_id] = target; s->texture_keys[c->target_id] = 0; s->texture_bytes[c->target_id] = 0;
     s->texture_owner[c->target_id] = c;
     c->w = w; c->h = h; c->pw = pw; c->ph = ph; c->vx = 0; c->vy = 0; c->vw = w; c->vh = h;
@@ -687,6 +723,9 @@ void mr_destroy(mr_context *c) {
     flush_pending(c, 1);
     if (c->target_id) { s->textures[c->target_id] = nil; s->texture_keys[c->target_id] = 0; s->texture_owner[c->target_id] = NULL; c->target_id = 0; }
     c->target = nil; c->depth_target = nil; c->resolved = nil; c->staging = nil;
+#if MR_TARGET_MEMORY
+    target_bytes_set(c, 0);
+#endif
     layout_forget(c);
     if (s->contexts) s->contexts--;
     free(c);

@@ -332,6 +332,9 @@ int mr_read_framebuffer(mr_context *ctx, void *out, size_t out_size);
 /* Upload CPU-written surface pixels, preserving later draw/clear ordering. */
 int mr_write_framebuffer(mr_context *ctx, const void *in, size_t size);
 
+/* Bytes Metal allocated for every live context's colour and depth
+ * attachments (allocatedSize), and how many contexts; any thread. */
+uint64_t mr_target_memory(uint32_t *targets);
 /* Texture id (shared table) aliasing this context's color target, safe to
  * sample from another context's draws in submission order. 0 if unavailable. */
 uint32_t mr_target_texture(mr_context *ctx);

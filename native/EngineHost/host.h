@@ -86,6 +86,10 @@ void host_heap_stats(uint64_t out[6]);
 /* Anonymous page space: live bytes, high-water offset, region size. */
 void host_page_stats(uint64_t out[3]);
 uint32_t guest_page_alloc(uint32_t size);          /* VirtualAlloc-style, 64 KiB granularity */
+/* The same allocator without the fatal exit: 0 (nothing claimed, nothing
+ * logged) when size is 0, too large, or no run is free. For callers that
+ * can fail an operation transactionally (D3D CreateDevice/Reset). */
+uint32_t guest_page_try_alloc(uint32_t size);
 int guest_page_free(uint32_t base);               /* owning host resource only; exact allocation base */
 uint32_t guest_strdup(const char *s);
 uint32_t host_proc_address(const char *dll, const char *name);   /* magic callable for (dll,name) */

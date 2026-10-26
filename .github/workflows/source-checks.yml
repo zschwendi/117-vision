@@ -11,6 +11,8 @@ jobs:
     # subset that skips the GPU/visionOS checks. Use the supported host OS.
     runs-on: macos-15
     timeout-minutes: 15
+    env:
+      PYTHONDONTWRITEBYTECODE: '1'
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with:
@@ -18,3 +20,13 @@ jobs:
       - run: python3 tools/check_repository_hygiene.py --strict
       - run: python3 tools/run_source_checks.py --portable-only
       - run: python3 tools/run_source_checks.py --portable-only --sanitize
+      # These source fixtures need Darwin frameworks/linker, but no iPad,
+      # simulator, game payload or signing. Metal reports SKIP without a GPU.
+      - name: Mobile input and graphics source fixtures
+        run: >-
+          python3 -B tools/run_source_checks.py
+          --only device-input,device_messages,pad-input-policy,pad-input-session,guest_page_try,d3d9_transaction,d3d9_admission,mobile-graphics-runtime,mobile-graphics-metal
+      - name: Mobile input and graphics sanitizers
+        run: >-
+          python3 -B tools/run_source_checks.py --sanitize
+          --only device-input,device_messages,pad-input-policy,pad-input-session,guest_page_try,d3d9_transaction,d3d9_admission,mobile-graphics-runtime,mobile-graphics-metal

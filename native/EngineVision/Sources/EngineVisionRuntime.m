@@ -6,6 +6,15 @@
 #import <UIKit/UIApplication.h>
 #import <dispatch/dispatch.h>
 #endif
+/* iPad/iPhone launch graphics and flat-present pacing. visionOS keeps its own
+ * launch block below; a host test defines ENGINEVISION_MOBILE_GRAPHICS_TEST
+ * to run these same functions with stubbed display and preference reads. */
+#if (TARGET_OS_IOS && !TARGET_OS_VISION) || defined(ENGINEVISION_MOBILE_GRAPHICS_TEST)
+#define ENGINEVISION_MOBILE_GRAPHICS 1
+#endif
+#if TARGET_OS_IOS && !TARGET_OS_VISION && !defined(ENGINEVISION_MOBILE_GRAPHICS_TEST)
+#import <UIKit/UIKit.h>
+#endif
 #import <os/lock.h>
 #include <pthread.h>
 #include <mach/mach.h>
@@ -569,6 +578,252 @@ void enginevision_copy_status(char *destination, size_t capacity) {
     os_unfair_lock_lock(&runtime_lock); snprintf(destination, capacity, "%s", runtime_status); os_unfair_lock_unlock(&runtime_lock);
 }
 
+#if ENGINEVISION_MOBILE_GRAPHICS
+#include "frame_limit.h"
+/* ---- iPad/iPhone launch graphics ---------------------------------------------
+ * The plan is fixed once, on the main thread, before the engine thread exists.
+ * Afterwards only the rate can move, and only down to what the presenter's
+ * current screen supports (and back up to the launch request): the presenter
+ * reports its screen on the main thread, mobile_cadence changes under
+ * runtime_lock, and the time-update hook (frame_limit_hooks.inc) follows. */
+static HaloMobilePlan mobile_launch_plan;
+static int mobile_launched, mobile_external_vidmode;
+static int32_t mobile_effective_refresh;            /* main thread */
+static int32_t mobile_screen_max_fps;               /* the presenter's current screen; 0 unknown */
+static HaloMobileCadence mobile_cadence;             /* runtime_lock */
+extern void host_frame_idle_wait(uint64_t start, uint64_t end);   /* shims_kernel32.c */
+void host_page_stats(uint64_t out[3]);                            /* host.c */
+#define MOBILE_RESOLUTION_KEY @"HaloPadRenderResolution"
+#define MOBILE_RATE_KEY @"HaloPadFrameRate"
+
+/* The game's window in pixels as oriented now, the whole panel, and the
+ * maximum rate of the screen they are on; zeros when unknown. */
+typedef struct { int64_t view_w, view_h, panel_w, panel_h; int32_t fps; } MobileMeasure;
+
+#ifdef ENGINEVISION_MOBILE_GRAPHICS_TEST
+/* The host test supplies the measurements, the saved choices and setenv. */
+static void mobile_measure(MobileMeasure *m);
+static NSString *mobile_stored(NSString *key);
+static int mobile_setenv(const char *name, const char *value, int overwrite);
+#else
+#define mobile_setenv setenv
+static int64_t mobile_pixels(CGFloat points, CGFloat scale) {
+    double pixels = (double)points * (double)scale;
+    return pixels > 0.0 && pixels <= HALO_MOBILE_DISPLAY_LIMIT ? (int64_t)llround(pixels) : 0;
+}
+/* The foreground window scene (else any connected one): its key window's
+ * bounds, which UIKit gives in the current interface orientation (full
+ * screen, Stage Manager or Split View size), in the screen's native pixels.
+ * Without a window yet, the screen's oriented bounds. Main thread only. */
+static void mobile_measure(MobileMeasure *m) {
+    memset(m, 0, sizeof *m);
+    if (![NSThread isMainThread]) return;
+    UIWindowScene *scene = nil, *any = nil;
+    for (UIScene *candidate in UIApplication.sharedApplication.connectedScenes) {
+        if (![candidate isKindOfClass:[UIWindowScene class]]) continue;
+        if (!any) any = (UIWindowScene *)candidate;
+        if (candidate.activationState == UISceneActivationStateForegroundActive) { scene = (UIWindowScene *)candidate; break; }
+    }
+    if (!scene) scene = any;
+    UIScreen *screen = scene.screen;
+    if (!screen) return;   /* before any scene connects: the plan's safe fallback */
+    CGSize panel = screen.nativeBounds.size;
+    m->panel_w = mobile_pixels(panel.width, 1.0); m->panel_h = mobile_pixels(panel.height, 1.0);
+    CGFloat scale = screen.nativeScale > 0 ? screen.nativeScale : screen.scale;
+    UIWindow *window = scene.keyWindow ?: scene.windows.firstObject;
+    CGSize points = window ? window.bounds.size : screen.bounds.size;
+    m->view_w = mobile_pixels(points.width, scale); m->view_h = mobile_pixels(points.height, scale);
+    NSInteger maximum = screen.maximumFramesPerSecond;
+    m->fps = maximum > 0 && maximum <= 1000 ? (int32_t)maximum : 0;
+}
+static NSString *mobile_stored(NSString *key) {
+    id value = [NSUserDefaults.standardUserDefaults objectForKey:key];
+    return [value isKindOfClass:[NSString class]] ? value : nil;
+}
+#endif
+
+static void mobile_plan_now(HaloMobilePlan *plan) {
+    MobileMeasure m; mobile_measure(&m);
+    NSString *stored = mobile_stored(MOBILE_RESOLUTION_KEY), *rate = mobile_stored(MOBILE_RATE_KEY);
+    halo_mobile_plan_view(stored.UTF8String, rate.UTF8String, getenv("HALO_VIDMODE"),
+                          m.view_w, m.view_h, m.panel_w, m.panel_h, m.fps, plan);
+}
+
+static void mobile_export(const HaloMobilePlan *plan, int launched, EngineMobileGraphicsPlan *out) {
+    memset(out, 0, sizeof *out);
+    out->display_width = (int32_t)plan->display_width; out->display_height = (int32_t)plan->display_height;
+    out->view_width = (int32_t)plan->view_width; out->view_height = (int32_t)plan->view_height;
+    out->display_max_fps = plan->display_max_fps;
+    out->native_width = (int32_t)plan->native.width; out->native_height = (int32_t)plan->native.height;
+    out->render_width = (int32_t)plan->render.width; out->render_height = (int32_t)plan->render.height;
+    out->refresh = plan->refresh; out->size_source = plan->size_source; out->flags = plan->flags;
+    out->launched = launched; out->external_vidmode = launched && mobile_external_vidmode;
+    out->effective_refresh = launched && mobile_effective_refresh ? mobile_effective_refresh : plan->refresh;
+    out->current_display_max_fps = launched && mobile_screen_max_fps ? mobile_screen_max_fps : plan->display_max_fps;
+    out->lifts_throttle = halo_mobile_lifts_throttle(out->effective_refresh);
+    out->memory_steady_bytes = plan->memory.steady_total; out->memory_peak_bytes = plan->memory.peak_total;
+    out->memory_peak_worst_bytes = plan->memory.peak_worst_total;
+    out->memory_guest_bytes = plan->memory.guest_total;
+    os_unfair_lock_lock(&runtime_lock);
+    out->current_width = latest_width; out->current_height = latest_height;
+    out->paced_frames = mobile_cadence.frames; out->paced_waits = mobile_cadence.waits;
+    out->paced_wait_ns = mobile_cadence.wait_ns; out->paced_late = mobile_cadence.late;
+    out->paced_restarts = mobile_cadence.restarts;
+    os_unfair_lock_unlock(&runtime_lock);
+    if (out->current_width > 0 && out->current_height > 0) {
+        HaloMobileMemory current;
+        halo_mobile_memory((uint32_t)out->current_width, (uint32_t)out->current_height,
+                           plan->display_width, plan->display_height, &current);
+        out->memory_current_bytes = current.steady_total;
+    }
+    if (launched) {
+        HaloFrameLimitStats limit; host_frame_limit_stats(&limit);
+        out->limiter_lifted = limit.lifted;
+        out->limiter_cinematic = limit.reasons[HALO_FRAME_LIMIT_WHY_CINEMATIC];
+        out->limiter_declined = limit.reasons[HALO_FRAME_LIMIT_WHY_CONSTANTS];
+        out->limiter_floor_waits = limit.floor_waits;
+        uint32_t targets = 0; out->renderer_target_bytes = mr_target_memory(&targets); out->renderer_targets = targets;
+        uint64_t pages[3] = {0}; host_page_stats(pages); out->guest_live_bytes = pages[0];
+    }
+}
+
+/* Words for a refused launch, where the player sees the start error. */
+static void mobile_refuse(const char *reason) {
+    os_unfair_lock_lock(&runtime_lock);
+    snprintf(runtime_status, sizeof runtime_status, "Graphics settings not applied: %s.", reason);
+    os_unfair_lock_unlock(&runtime_lock);
+    fprintf(stderr, "[mobile-graphics] refused: %s\n", reason);
+}
+
+bool enginevision_mobile_graphics_plan(EngineMobileGraphicsPlan *out) {
+    if (!out) return false;
+    HaloMobilePlan plan; mobile_plan_now(&plan);
+    mobile_export(&plan, 0, out);
+    return true;
+}
+bool enginevision_mobile_graphics_launched(EngineMobileGraphicsPlan *out) {
+    if (!out) return false;
+    if (!mobile_launched) { memset(out, 0, sizeof *out); return false; }
+    mobile_export(&mobile_launch_plan, 1, out);
+    return true;
+}
+
+static void mobile_apply_rate(int32_t refresh) {
+    os_unfair_lock_lock(&runtime_lock);
+    halo_mobile_cadence_set(&mobile_cadence, refresh);
+    os_unfair_lock_unlock(&runtime_lock);
+    host_frame_limit_configure(halo_mobile_lifts_throttle(refresh));
+    mobile_effective_refresh = refresh;
+}
+
+int enginevision_mobile_prepare_launch(EngineMobileGraphicsPlan *out) {
+    if (mobile_launched) { if (out) mobile_export(&mobile_launch_plan, 1, out); return EALREADY; }
+    HaloMobilePlan plan; mobile_plan_now(&plan);
+    const char *override = getenv("HALO_VIDMODE"), *extra = getenv("HALO_CMDLINE_EXTRA");
+    const int explicit_mode = override && override[0];
+    HaloMobileSize existing = { 0, 0 };
+    const int kind = halo_mobile_extra_vidmode(extra, &existing);
+    char combined[sizeof host_cmdline_buf] = "", mode[64];
+    int error = 0; const char *reason = NULL;
+    if (plan.flags & HALO_MOBILE_FLAG_OVERRIDE_REJECTED) {
+        error = EINVAL; reason = "HALO_VIDMODE asks for a size outside 640 x 480 ... 2880 x 2160";
+    } else if (kind == HALO_MOBILE_EXTRA_UNSAFE_SYNTAX) {
+        plan.flags |= HALO_MOBILE_FLAG_EXTRA_REJECTED;
+        error = EINVAL; reason = "HALO_CMDLINE_EXTRA contains quotes or control characters, which could hide or swallow a -vidmode";
+    } else if (kind == HALO_MOBILE_EXTRA_REJECTED) {
+        plan.flags |= HALO_MOBILE_FLAG_EXTRA_REJECTED;
+        error = EINVAL; reason = "HALO_CMDLINE_EXTRA has a -vidmode that is repeated, embedded in another token, malformed or outside 640 x 480 ... 2880 x 2160";
+    } else if (kind == HALO_MOBILE_EXTRA_ADMITTED) {
+        if (explicit_mode && (existing.width != plan.render.width || existing.height != plan.render.height)) {
+            plan.flags |= HALO_MOBILE_FLAG_EXTRA_REJECTED;
+            error = EINVAL; reason = "HALO_VIDMODE and HALO_CMDLINE_EXTRA ask for different sizes";
+        } else {
+            /* An earlier caller or the launch environment chose an admitted
+             * mode: keep the command line exactly, report what it asks for. */
+            plan.render = existing; plan.size_source = HALO_MOBILE_SIZE_EXTERNAL;
+            halo_mobile_memory(existing.width, existing.height, plan.display_width, plan.display_height, &plan.memory);
+            snprintf(combined, sizeof combined, "%s", extra);
+        }
+    } else if (!halo_mobile_vidmode(&plan, override, mode, sizeof mode)) {
+        error = E2BIG; reason = "the video mode does not fit the command line";
+    } else {
+        int n = extra && extra[0] ? snprintf(combined, sizeof combined, "%s %s", extra, mode)
+                                  : snprintf(combined, sizeof combined, "%s", mode);
+        if (n <= 0 || (size_t)n >= sizeof combined) { error = E2BIG; reason = "HALO_CMDLINE_EXTRA is too long to add the video mode"; }
+    }
+    /* enginevision_start appends the extras to the fixed command line; refuse
+     * here rather than let it cut the -vidmode off. */
+    if (!error && !strstr(host_cmdline_buf, combined) &&
+        strlen(host_cmdline_buf) + 1 + strlen(combined) + 1 > sizeof host_cmdline_buf) {
+        error = E2BIG; reason = "the launch command line would be cut short";
+    }
+    /* Write the command line before anything is committed: a failed write
+     * fixes nothing, so a later call can retry from the same state. */
+    char write_reason[96];
+    if (!error && kind != HALO_MOBILE_EXTRA_ADMITTED && (errno = 0, mobile_setenv("HALO_CMDLINE_EXTRA", combined, 1)) != 0) {
+        error = errno ? errno : ENOMEM;
+        snprintf(write_reason, sizeof write_reason, "HALO_CMDLINE_EXTRA could not be written (%s)", strerror(error));
+        reason = write_reason;
+    }
+    if (error) {
+        if (error == E2BIG) plan.flags |= HALO_MOBILE_FLAG_COMMAND_TOO_LONG;
+        mobile_refuse(reason);
+        if (out) mobile_export(&plan, 0, out);
+        return error;
+    }
+    mobile_external_vidmode = kind == HALO_MOBILE_EXTRA_ADMITTED;
+    mobile_launch_plan = plan; mobile_launched = 1;
+    mobile_apply_rate(plan.refresh);
+    fprintf(stderr, "[mobile-graphics] view=%ux%u panel=%ux%u max=%dHz native=%ux%u render=%ux%u source=%u refresh=%d "
+                    "lift-throttle=%d flags=0x%x external=%d memory-steady=%lluMiB peak=%lluMiB guest=%lluMiB\n",
+            plan.view_width, plan.view_height, plan.display_width, plan.display_height, plan.display_max_fps,
+            plan.native.width, plan.native.height, plan.render.width, plan.render.height, plan.size_source, plan.refresh,
+            halo_mobile_lifts_throttle(plan.refresh), plan.flags, mobile_external_vidmode,
+            (unsigned long long)(plan.memory.steady_total >> 20), (unsigned long long)(plan.memory.peak_total >> 20),
+            (unsigned long long)(plan.memory.guest_total >> 20));
+    if (out) mobile_export(&plan, 1, out);
+    return 0;
+}
+
+int32_t enginevision_mobile_presenter_fps(int32_t screen_max_fps) {
+    if (!mobile_launched) {
+        NSString *rate = mobile_stored(MOBILE_RATE_KEY);
+        return halo_mobile_presenter_fps(halo_mobile_refresh(screen_max_fps, halo_mobile_parse_rate(rate.UTF8String), NULL),
+                                         screen_max_fps);
+    }
+    /* An unknown screen keeps the rate in force. A known one re-resolves the
+     * launch's rate choice against it: Display maximum follows the screen up
+     * or down (an unknown launch display included), 60 and 30 stay ceilings.
+     * The back buffer never changes. */
+    if (screen_max_fps <= 0 || screen_max_fps > 1000) return mobile_effective_refresh;
+    mobile_screen_max_fps = screen_max_fps;
+    int32_t effective = halo_mobile_refresh(screen_max_fps, mobile_launch_plan.rate_choice, NULL);
+    if (effective != mobile_effective_refresh) {
+        mobile_apply_rate(effective);
+        fprintf(stderr, "[mobile-graphics] screen maximum %dHz: presenting and producing at %d fps (launch request %d)\n",
+                screen_max_fps, effective, mobile_launch_plan.refresh);
+    }
+    return effective;
+}
+
+/* After a flat frame is published: hold the engine thread until the next
+ * display period at the requested rate if it is ahead of it. Nothing is
+ * locked while it waits, and the wait counts as the frame's idle time. */
+static void mobile_pace_present(void) {
+    uint64_t now = clock_gettime_nsec_np(CLOCK_UPTIME_RAW);
+    os_unfair_lock_lock(&runtime_lock);
+    uint64_t release = halo_mobile_cadence_release(&mobile_cadence, now);
+    os_unfair_lock_unlock(&runtime_lock);
+    if (release <= now) return;
+    static mach_timebase_info_data_t timebase;
+    if (!timebase.denom) mach_timebase_info(&timebase);
+    uint64_t deadline = (uint64_t)((__uint128_t)release * timebase.denom / timebase.numer);
+    for (int tries = 0; tries < 4 && clock_gettime_nsec_np(CLOCK_UPTIME_RAW) < release; tries++)
+        mach_wait_until(deadline);
+    host_frame_idle_wait(now, clock_gettime_nsec_np(CLOCK_UPTIME_RAW));
+}
+#endif
+
 bool enginevision_frame_info(EngineVisionFrameInfo *out) {
     if (!out) return false;
     os_unfair_lock_lock(&runtime_lock);
@@ -681,6 +936,9 @@ void metalwin_present(const void *bgra, int width, int height) {
     snprintf(runtime_status, sizeof runtime_status, "Presenting original engine frame %llu (%d x %d, %zu bytes).",
              (unsigned long long)latest_sequence, width, height, bytes);
     os_unfair_lock_unlock(&runtime_lock);
+#if ENGINEVISION_MOBILE_GRAPHICS
+    mobile_pace_present();
+#endif
 }
 
 int metalwin_should_close(void) { return host_quit_requested != 0; }
@@ -811,6 +1069,13 @@ int enginevision_start(const char *game_root) {
       }
       snprintf(buf, sizeof buf, "-vidmode %s", mode && mode[0] ? mode : (chosen[0] ? chosen : "2048,1536,60"));
       setenv("HALO_CMDLINE_EXTRA", buf, 0); }
+#endif
+#if ENGINEVISION_MOBILE_GRAPHICS
+    /* The launcher may already have fixed the plan; otherwise fix it now,
+     * still on the caller's (main) thread, before the engine thread exists.
+     * A refused plan (unsafe or uncommittable command line) never starts. */
+    { int prepared = enginevision_mobile_prepare_launch(NULL);
+      if (prepared && prepared != EALREADY) return prepared; }
 #endif
     /* Zero-copy panorama hand-off. The headset takes it unless
      * HALO_PANORAMA_GPU=0 asks for the readback path; the Mac leaves it off

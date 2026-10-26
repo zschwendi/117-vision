@@ -20,6 +20,8 @@ uint32_t guest_page_alloc(uint32_t size) {
     uint32_t result=test_page_top,need=(size+0xffffu)&~0xffffu;
     assert((uint64_t)test_page_top+need<0x02000000u);test_page_top+=need;return result;
 }
+/* Reset stages replacement storage with the non-fatal entry. */
+uint32_t guest_page_try_alloc(uint32_t size) { return guest_page_alloc(size); }
 int mr_resize(mr_context *context,int width,int height) {
     assert(context==(mr_context *)(uintptr_t)0x1234u);resize_calls++;resized_w=width;resized_h=height;return resize_failure;
 }
@@ -46,7 +48,10 @@ int main(void) {
     resize_failure=1;uint32_t old_data=backbuffer->data;
     assert(reset_device(device,pp)==D3DERR_NOTAVAILABLE);assert(backbuffer->data==old_data&&backbuffer->width==640);
     assert(backbuffer_w==640&&current_rt_guest==0x7777&&panorama_mask==7&&panorama_info.valid);
-    assert(!freed_count&&host_panorama_all_layers_ready());
+    /* Only the two pages staged for 1280x960 are released; the old storage never is. */
+    assert(freed_count==2&&freed_pages[0]!=old_data&&freed_pages[1]!=old_depth_data&&host_panorama_all_layers_ready());
+    assert(freed_pages[0]>=old_depth_data+640*480*4&&freed_pages[1]>freed_pages[0]);
+    freed_count=0;
 
     resize_failure=0;assert(reset_device(device,pp)==D3D_OK);
     assert(resize_calls==2&&resized_w==1280&&resized_h==960);

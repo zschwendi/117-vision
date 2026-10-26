@@ -2,6 +2,7 @@
 #include "host.h"
 #include "directsound.h"
 #include "vorbis_shim.h"
+#include "device_input.h"
 #include <stdlib.h>
 #include <ctype.h>
 #include <stdarg.h>
@@ -27,22 +28,45 @@ static int main_window_active;
  * so a press cannot arrive one frame late and accept a newly opened dialog.
  * Return/Escape serve text dialogs. Arrow navigation stays in DirectInput;
  * also posting arrow messages causes duplicate selection steps in submenus. */
-typedef struct { uint32_t hwnd, message, wparam, lparam, time, x, y; } HostMessage;
-enum { MAX_HOST_MESSAGES = 256 };
+/* The guest MSG is the first seven words. device_generation (host only)
+ * marks a down, or a character translated from it, that only the hardware
+ * keyboard source (device_input.h) produced; a device fence removes it while
+ * still queued, exactly like its DirectInput event. Releases are never
+ * removed. Controller and legacy keyboard messages are untagged and unchanged. */
+typedef struct { uint32_t hwnd, message, wparam, lparam, time, x, y; uint64_t device_generation; } HostMessage;
+enum { MAX_HOST_MESSAGES = 256, HOST_MESSAGE_GUEST_BYTES = 28 };
 static _Thread_local HostMessage host_messages[MAX_HOST_MESSAGES];
 static _Thread_local unsigned host_message_count;
 static _Thread_local uint8_t message_keyboard_last[256];
-static void queue_message(uint32_t hwnd, uint32_t message, uint32_t wp, uint32_t lp) {
+static _Thread_local HostMessage message_last_returned;
+extern uint8_t host_keyboard_state[256];
+static void queue_message(uint32_t hwnd, uint32_t message, uint32_t wp, uint32_t lp, uint64_t device_generation) {
     if (host_message_count == MAX_HOST_MESSAGES) {
         host_log("USER32 input queue full; dropping oldest message");
         memmove(host_messages, host_messages + 1, sizeof(HostMessage) * (--host_message_count));
     }
     host_messages[host_message_count++] = (HostMessage){hwnd, message, wp, lp,
-        (uint32_t)(host_monotonic_ns() / 1000000ull), 0, 0};
+        (uint32_t)(host_monotonic_ns() / 1000000ull), 0, 0, device_generation};
+}
+static uint8_t message_scan_for_vk(uint32_t vk) { return vk == 0x1B ? 0x01 : vk == 0x0D ? 0x1C : 0; }
+static void prune_device_messages(const uint8_t keys[256], const uint8_t device[256], uint64_t generation) {
+    unsigned kept = 0;
+    for (unsigned i = 0; i < host_message_count; i++) {
+        HostMessage msg = host_messages[i];
+        if (msg.device_generation && msg.device_generation != generation) {
+            uint8_t dik = message_scan_for_vk(msg.wparam);
+            if (!dik || !(keys[dik] & 0x80)) continue;   /* stale hardware press */
+            msg.device_generation = (device[dik] & 0x80) ? generation : 0;  /* held again, or by another source */
+        }
+        host_messages[kept++] = msg;
+    }
+    host_message_count = kept;
 }
 static void pump_keyboard_messages(void) {
     if (!main_window_active || !main_wndproc) return;
-    uint8_t keys[256]; host_dinput_keyboard_state(keys);
+    uint8_t keys[256], device[256];
+    uint64_t generation = host_dinput_keyboard_state_with_device(keys, device);
+    prune_device_messages(keys, device, generation);
     static const uint8_t scan[] = {0x01, 0x1C};
     static const uint8_t vk[] = {0x1B, 0x0D};
     for (unsigned i = 0; i < sizeof scan; i++) {
@@ -50,7 +74,8 @@ static void pump_keyboard_messages(void) {
         if (down == ((message_keyboard_last[dik] & 0x80) != 0)) continue;
         uint32_t lp = 1u | ((dik & 0x7Fu) << 16) | ((dik & 0x80u) ? 1u << 24 : 0);
         if (!down) lp |= 0xC0000000u;
-        queue_message(host_main_hwnd, down ? 0x100 : 0x101, vk[i], lp);
+        uint64_t owner = down && (device[dik] & 0x80) && !(host_keyboard_state[dik] & 0x80) ? generation : 0;
+        queue_message(host_main_hwnd, down ? 0x100 : 0x101, vk[i], lp, owner);
     }
     memcpy(message_keyboard_last, keys, sizeof keys);
 }
@@ -162,7 +187,8 @@ SHIM(PeekMessageA) {
         HostMessage msg = host_messages[i];
         if (hwnd && msg.hwnd != hwnd) continue;
         if ((low || high) && (msg.message < low || msg.message > high)) continue;
-        memcpy(GPTR(out), &msg, sizeof msg);
+        memcpy(GPTR(out), &msg, HOST_MESSAGE_GUEST_BYTES);
+        message_last_returned = msg;
         if (flags & 1u) {
             memmove(host_messages + i, host_messages + i + 1,
                     sizeof(HostMessage) * (host_message_count - i - 1));
@@ -176,8 +202,13 @@ SHIM(TranslateMessage) {
     uint32_t msg = ARG(0); if (!msg) RET_STDCALL(0, 1);
     uint32_t type = G32(msg + 4), vk = G32(msg + 8);
     if (type != 0x100 && type != 0x101 && type != 0x104 && type != 0x105) RET_STDCALL(0, 1);
-    if ((type == 0x100 || type == 0x104) && (vk == 0x0D || vk == 0x1B))
-        queue_message(G32(msg), type == 0x100 ? 0x102 : 0x106, vk, G32(msg + 12));
+    if ((type == 0x100 || type == 0x104) && (vk == 0x0D || vk == 0x1B)) {
+        /* A character inherits the hardware provenance of the key it came from. */
+        HostMessage *last = &message_last_returned;
+        uint64_t owner = last->hwnd == G32(msg) && last->message == type && last->wparam == vk &&
+            last->lparam == G32(msg + 12) && last->time == G32(msg + 16) ? last->device_generation : 0;
+        queue_message(G32(msg), type == 0x100 ? 0x102 : 0x106, vk, G32(msg + 12), owner);
+    }
     RET_STDCALL(1, 1);
 }
 SHIM(DispatchMessageA) { uint32_t msg = ARG(0); RET_STDCALL(msg ? call_wndproc(cpu, main_wndproc, G32(msg), G32(msg + 4), G32(msg + 8), G32(msg + 12)) : 0, 1); }

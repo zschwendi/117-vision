@@ -28,9 +28,15 @@ def generated_engine():
     return next((Path(c) for c in candidates if c and (Path(c) / 'engine_functions.h').is_file()
                  and (Path(c) / 'sub_004CC0D0.c').is_file()), None)
 
-def run(command):
+def run(command, capture_output=False):
     print('+', ' '.join(map(str, command)), flush=True)
-    subprocess.run(list(map(str, command)), cwd=ROOT, check=True, timeout=120)
+    result = subprocess.run(list(map(str, command)), cwd=ROOT, check=not capture_output, timeout=120,
+                            capture_output=capture_output, text=capture_output)
+    if capture_output:
+        print(result.stdout, end='', flush=True)
+        if result.stderr: print(result.stderr, end='', file=sys.stderr, flush=True)
+        result.check_returncode()
+    return result
 
 # Mocked GameController/Core Haptics checks that compile gamecontroller.m:
 # name, test source, extra flags, minimum macOS major version.
@@ -39,6 +45,7 @@ CONTROLLER_CHECKS = [
     ('controller-haptics', 'test_controller_haptics.m', [], 0),
     ('controller-snapshot', 'test_controller_snapshot.m', [], 0),
     ('sense-app-input', 'test_app_input.m', ['-I', HOST, '-I', ROOT / 'native/EngineReuse', '-lm'], 0),
+    ('device-input', 'test_device_input.m', ['-I', HOST, '-I', ROOT / 'native/EngineReuse', '-lm'], 0),
     ('gamecontroller-spatial', 'test_gamecontroller_spatial.m', STRICT, 26),
     ('controller-spatial-haptics', 'test_controller_spatial_haptics.m', STRICT, 26),
 ]
@@ -62,6 +69,8 @@ METAL_CHECKS = {
     'metal-publication': 'test_metalrenderer_post.m',
     # The visionOS runtime's slot publication and leases (also run in the full pass).
     'panorama-publication': '../../EngineVision/Tests/PanoramaPublicationValidation.m',
+    'mobile-graphics-runtime': '../../EngineVision/Tests/MobileGraphicsRuntimeValidation.m',
+    'mobile-graphics-metal': 'test_mobile_graphics_metal.m',
 }
 
 def run_metal_check(temp, flags, name):
@@ -70,17 +79,25 @@ def run_metal_check(temp, flags, name):
         return False
     binary = Path(temp) / name
     extra = []
-    if name == 'panorama-publication':
+    if name in ('panorama-publication', 'mobile-graphics-runtime'):
         extra = ['-DENGINE_FLAT_MEMORY=1', '-I', HOST, '-I', ROOT / 'native/EngineReuse',
                  '-ffunction-sections', '-fdata-sections', '-Wl,-dead_strip']
+    if name == 'mobile-graphics-metal': extra = ['-w', '-DMR_TARGET_MEMORY=1']
     run([os.environ.get('CC', 'clang'), *flags, '-fobjc-arc', '-fblocks', *extra, HOST / 'tests' / METAL_CHECKS[name],
          '-framework', 'Foundation', '-framework', 'Metal', '-o', binary])
-    run([binary])
-    return True
+    result = run([binary], capture_output=True)
+    return not any(line.startswith('SKIP:') for line in result.stdout.splitlines())
 
 # Swift validations selectable with --only: name -> (swiftc flags, sources).
 VISION = ROOT / 'native/EngineVision'
+PAD = ROOT / 'native/EnginePad'
 SWIFT_CHECKS = {
+    'pad-input-policy': (['-parse-as-library', '-swift-version', '5'],
+                         [PAD / 'Sources/EnginePadInputPolicy.swift', PAD / 'Sources/EnginePadPresentationState.swift',
+                          PAD / 'Tests/EnginePadInputPolicyValidation.swift']),
+    'pad-input-session': (['-parse-as-library', '-swift-version', '5'],
+                          [PAD / 'Sources/EnginePadInputPolicy.swift', PAD / 'Sources/EnginePadInputSession.swift',
+                           PAD / 'Tests/EnginePadInputSessionValidation.swift']),
     'foveation-geometry': (['-O', '-import-objc-header', VISION / 'Tests/FoveationGeometryBridge.h', '-Xcc', f'-I{HOST}'],
                           [VISION / 'Sources/EngineImmersiveScreenGeometry.swift', VISION / 'Tests/FoveationGeometryValidation.swift']),
     'graphics-preferences': (['-import-objc-header', HOST / 'halo_settings.h'],
@@ -104,7 +121,7 @@ SWIFT_CHECKS = {
                         VISION / 'Sources/EngineSenseReticleGeometry.swift', VISION / 'Tests/SenseReticleMotionGPUValidation.swift']),
 }
 
-def run_swift_check(temp, name):
+def run_swift_check(temp, name, sanitize=False):
     if platform.system() != 'Darwin':
         print(f'SKIP {name}: requires macOS swiftc', flush=True)
         return False
@@ -115,7 +132,8 @@ def run_swift_check(temp, name):
         run([os.environ.get('CC', 'clang'), '-O2', '-c', HOST / 'halo_settings.c', '-o', settings_object])
         sources.append(settings_object)
     binary = Path(temp) / name
-    run(['swiftc', *swift_flags, '-module-cache-path', Path(temp) / 'swift-cache', *sources, '-o', binary])
+    run(['swiftc', *swift_flags, *(['-sanitize=address'] if sanitize else []),
+         '-module-cache-path', Path(temp) / 'swift-cache', *sources, '-o', binary])
     arguments = [VISION / 'Sources/EngineSensePhysicalSettings.swift', VISION / 'Sources/EngineSenseSettingsView.swift'] if name == 'sense-physical-settings' else []
     if name == 'reticle-motion': arguments = [VISION / 'Sources/EngineImmersive.swift']
     run([binary, *arguments])
@@ -144,6 +162,7 @@ def main():
         run([sys.executable, ROOT / 'tools/generate_smaa_msl.py', '--check'])
     cases = [(name, []) for name in ('frame_pacer', 'panorama_budget', 'pointer_step', 'pointer_input', 'panorama_epoch', 'panorama_gpu_carry', 'panorama_lifecycle', 'panorama_pose_export', 'panorama_camera_cut', 'panorama_motion_budget', 'panorama_graphics', 'texture_mips', 'dinput_lifecycle', 'winsock', 'multiplayer_update', 'x87_nearest_fast_path', 'engine_direct_calls', 'controller_link_guard')]
     cases = [(name, [HOST / 'halo_settings.c'] if name == 'dinput_lifecycle' else extra) for name, extra in cases]
+    cases.append(('mobile_graphics', ['-std=c11', '-Wall', '-Wextra', '-Werror']))
     cases.append(('sense_pose', []))
     cases.append(('sense_head', []))
     cases.append(('sense_gestures', []))
@@ -162,6 +181,12 @@ def main():
         cases.append(('x87_rotating_stack', [HOST / 'tests/x87_stack_shifting.c',
                       f'-DHALO_ARM64_FENV_FAST={fast}', '-frounding-math', '-ffp-contract=off']))
     generated = generated_engine()
+    # Original time-update fixtures are optional; both routing variants compile
+    # and print SKIP without generated sources. Never embed a private path.
+    for ios in (0, 1):
+        cases.append(('frame_limit_original', ['-w', f'-DENGINE_IOS_HOOKS={ios}',
+                      '-DHALO_ARM64_FENV_FAST=1', '-frounding-math', '-ffp-contract=off',
+                      *(['-I', generated] if generated else [])]))
     if generated:
         for name in ("sense_weapon_original", "sense_weapon_charge_original", "sense_physical_original", "sense_mount_original"):
             cases.append((name, ["-I", generated, "-DHALO_ARM64_FENV_FAST=1", "-frounding-math", "-ffp-contract=off"]))
@@ -195,6 +220,11 @@ def main():
     cases += [('core_telemetry', []), ('game_time_telemetry', ['-DHALO_ARM64_FENV_FAST=1', '-frounding-math', '-ffp-contract=off',
                                                                *(['-I', generated] if generated else [])])]
     if mac:
+        # These include Darwin host/renderer code and require Apple's linker.
+        cases += [('guest_page_try', []), ('device_messages', ['-Wno-deprecated-declarations'])]
+        for mobile in (0, 1):
+            cases += [(name, [f'-DHALO_D3D9_MOBILE_POLICY={mobile}'])
+                      for name in ('d3d9_transaction', 'd3d9_admission')]
         cases += [('thread_wait_telemetry', []), ('pass_time_telemetry', ['-ffunction-sections', '-fdata-sections', '-Wl,-dead_strip'])]
         cases += [('haptics_mailbox', []), ('audio_watchdog', [HOST / 'directsound_mixer.c']),
                   ('directsound_lifetime', [HOST / 'directsound_mixer.c']),
@@ -217,6 +247,7 @@ def main():
         cases = [case for case in cases if case[0] in only]
     flags = ['-O1', '-g', '-fsanitize=address,undefined', '-fno-omit-frame-pointer'] if args.sanitize else ['-O2']
     with tempfile.TemporaryDirectory(prefix='halo-source-checks-') as temp:
+        skipped_cases = set()
         for name, extra in cases:
             binary = Path(temp) / name
             flags = ['-O1', '-g', '-fsanitize=address,undefined', '-fno-omit-frame-pointer'] if args.sanitize else ['-O2']
@@ -238,15 +269,21 @@ def main():
                 # Lifted code, built as the engine is; SKIP without the sources.
                 command += ['-DHALO_ARM64_FENV_FAST=1', '-frounding-math', '-ffp-contract=off']
                 if generated: command += ['-I', generated]
-            if name in ('guest_pages', 'win32_save_flush', 'd3d9_reset', 'guest_heap', 'win32_heap_reuse',
+            if name in ('guest_pages', 'guest_page_try', 'device_messages', 'd3d9_transaction', 'd3d9_admission',
+                        'win32_save_flush', 'd3d9_reset', 'guest_heap', 'win32_heap_reuse',
                         'd3d9_resource_lifetime', 'd3d9_texture_lifetime', 'd3d9_texture_mod', 'guest_heap_sound_owners', 'win32_apc_queue', 'win32_tls_lifetime',
                         'vb_resident', 'draw_indices', 'd3d9_radial_fog', 'win32_sleep_accounting'):
                 command += ['-ffunction-sections', '-fdata-sections', '-Wl,-dead_strip']
             if name == 'cache_read_wait': command += ['-ffunction-sections', '-fdata-sections', '-Wl,-dead_strip']
             run([*command, '-o', binary])
-            run([binary])
+            if name == 'frame_limit_original':
+                result = run([binary], capture_output=True)
+                if any(line.startswith('SKIP:') for line in result.stdout.splitlines()): skipped_cases.add(name)
+            else:
+                run([binary])
         if only:
-            passed, skipped = len(cases), []
+            passed = len({name for name, _ in cases} - skipped_cases)
+            skipped = sorted(skipped_cases)
             for check in CONTROLLER_CHECKS:
                 if check[0] in only:
                     if run_controller_check(temp, flags, *check): passed += 1
@@ -257,7 +294,7 @@ def main():
                     else: skipped.append(name)
             for name in SWIFT_CHECKS:
                 if name in only:
-                    if run_swift_check(temp, name): passed += 1
+                    if run_swift_check(temp, name, args.sanitize): passed += 1
                     else: skipped.append(name)
             print(f'PASS {passed} of {len(only)} selected checks' +
                   (f'; SKIPPED (not passed): {", ".join(skipped)}' if skipped else '') +
@@ -510,6 +547,8 @@ def main():
             run([binary])
             run_swift_check(temp, 'foveation-geometry')
             run_swift_check(temp, 'graphics-preferences')
+            run_swift_check(temp, 'pad-input-policy', args.sanitize)
+            run_swift_check(temp, 'pad-input-session', args.sanitize)
             binary = Path(temp) / 'layer-alignment-gpu'
             run(['swiftc', '-O', '-module-cache-path', Path(temp) / 'swift-cache', *alignment,
                  ROOT / 'native/EngineVision/Tests/LayerAlignmentGPUValidation.swift', '-o', binary])

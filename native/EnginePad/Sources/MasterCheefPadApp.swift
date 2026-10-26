@@ -17,7 +17,7 @@ struct MasterCheefPadApp: App {
     @StateObject private var cloudSaves = EngineCloudSaveStore()
     var body: some Scene {
         WindowGroup {
-            EnginePadLibraryView(assets: assets, engine: engine, cloudSaves: cloudSaves)
+            EnginePadLibraryView(assets: assets, engine: engine, cloudSaves: cloudSaves, input: engine.input)
                 .preferredColorScheme(.dark)
                 .tint(EngineLibraryTheme.accent)
         }
@@ -30,6 +30,7 @@ private struct EnginePadLibraryView: View {
     @ObservedObject var assets: EngineAssetStore
     @ObservedObject var engine: EnginePadModel
     @ObservedObject var cloudSaves: EngineCloudSaveStore
+    @ObservedObject var input: EnginePadInputRouter
     @State private var showingImport = false
     @State private var showingSettings = false
     @State private var showingGame = false
@@ -107,17 +108,35 @@ private struct EnginePadLibraryView: View {
         }
         .onReceive(cloudSaves.cloudChanges) { _ in syncIfIdle() }
         .onChange(of: uiOwnsInput, initial: true) { _, owned in engine.uiOwnsInput = owned }
+        // Keyboard/mouse/touch: only an active scene (not .inactive) and the
+        // visible game with no app surface over it own that input.
+        .onChange(of: scenePhase, initial: true) { _, phase in input.update(sceneActive: phase == .active) }
+        .onChange(of: showingGame && !appSurfaceVisible, initial: true) { _, visible in input.update(gameVisible: visible) }
         .task {
             bindRuntimeGate()
             startMonitoringIfIdle()
         }
-        .fullScreenCover(isPresented: $showingGame) {
+        // A UIKit full-screen container (not fullScreenCover) so the game can
+        // request pointer lock; the content below is unchanged SwiftUI.
+        .background(EnginePadGamePresenter(isPresented: showingGame, input: input) {
             ZStack(alignment: .topTrailing) {
                 Color.black.ignoresSafeArea()
                 EngineFrameView().ignoresSafeArea()
+                EnginePadInputSurfaceView(router: input).ignoresSafeArea()
                 HStack {
                     Button { showingGame = false } label: { Label("Library", systemImage: "square.grid.2x2") }
                     Button { showingGameSettings = true } label: { Label("Settings", systemImage: "slider.horizontal.3") }
+                    if engine.state == ENGINEVISION_RUNNING {
+                        // Halo's Escape (pause/back) for keyboards without an Esc key, and touch.
+                        Button { input.sendPause() } label: { Label("Pause", systemImage: "pause") }
+                    }
+                    if input.mouseConnected || input.pointerSeen {
+                        Button { input.togglePointerCapture() } label: {
+                            Label(input.pointerReleased ? "Capture pointer" : "Release pointer",
+                                  systemImage: input.pointerReleased ? "cursorarrow.rays" : "cursorarrow")
+                        }
+                        .accessibilityHint("Command-L also releases or captures the pointer")
+                    }
                 }
                 // iPhone pillarbox margins are narrow; icons keep the 4:3 picture clear.
                 .labelStyle(EnginePadOverlayLabelStyle(iconOnly: compact))
@@ -140,7 +159,9 @@ private struct EnginePadLibraryView: View {
             .sheet(isPresented: $showingGameSettings) { settings }
             .onAppear { UIApplication.shared.isIdleTimerDisabled = true }
             .onDisappear { UIApplication.shared.isIdleTimerDisabled = false }
-        }
+            .preferredColorScheme(.dark)
+            .tint(EngineLibraryTheme.accent)
+        })
         .fileImporter(isPresented: $showingImport, allowedContentTypes: [.folder]) { result in
             guard !cloudSaves.isBusy, engine.canStart else { return }
             switch result { case .success(let url): assets.importFolder(url); case .failure(let error): importError = error.localizedDescription }
@@ -343,9 +364,12 @@ private struct EnginePadLibraryView: View {
             .font(.footnote)
             .multilineTextAlignment(.center).frame(maxWidth: 400)
         } else if assets.phase == .ready && engine.controllerName == nil {
-            Label("Pair a controller in \(deviceName) Settings to play.", systemImage: "gamecontroller")
+            // Play never requires a controller; say what is actually connected.
+            Label(EnginePadInputPolicy.launcherSummary(keyboard: input.keyboardConnected,
+                                                       pointer: input.mouseConnected || input.pointerSeen),
+                  systemImage: input.keyboardConnected ? "keyboard" : "hand.tap")
                 .font(.footnote).foregroundStyle(.secondary)
-                .multilineTextAlignment(.center).frame(maxWidth: 320)
+                .multilineTextAlignment(.center).frame(maxWidth: 360)
         }
     }
 

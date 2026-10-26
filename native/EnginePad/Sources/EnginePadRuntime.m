@@ -4,6 +4,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
+#include <errno.h>
 
 void enginepad_prepare(void) {
     static dispatch_once_t once;
@@ -29,15 +30,13 @@ void enginepad_prepare(void) {
 int enginepad_start(const char *game_root) {
     enginepad_prepare();
     NSUserDefaults *preferences=NSUserDefaults.standardUserDefaults;
-    NSArray<NSString *> *resolutions=@[@"1280x960", @"1600x1200", @"1920x1440", @"2048x1536"];
-    NSString *selected=[preferences stringForKey:@"HaloPadRenderResolution"];
-    if (![resolutions containsObject:selected]) selected=@"1600x1200";
-    NSString *mode=[selected stringByReplacingOccurrencesOfString:@"x" withString:@","];
-    const char *explicitMode=getenv("HALO_VIDMODE");
-    char command[128];
-    snprintf(command,sizeof command,"-vidmode %s,60",mode.UTF8String);
-    if (explicitMode && explicitMode[0]) snprintf(command,sizeof command,"-vidmode %s",explicitMode);
-    setenv("HALO_CMDLINE_EXTRA",command,0);
+    /* Resolution (a preset, or the largest 4:3 game viewport in this
+     * window), the frame-rate request and Halo's time-update throttle lift,
+     * measured on this main thread (mobile_graphics.h, frame_limit.h). A
+     * refused plan (unsafe or uncommittable command line) must not start. */
+    EngineMobileGraphicsPlan graphics;
+    int graphicsStatus=enginevision_mobile_prepare_launch(&graphics);
+    if (graphicsStatus!=0 && graphicsStatus!=EALREADY) return graphicsStatus;
     NSDictionary<NSString *, NSString *> *packs=@{@"TextureMods":@"hvt", @"ShaderMods":@"hvs"};
     for (NSString *name in packs) {
         NSString *path=[NSBundle.mainBundle pathForResource:name ofType:packs[name]];

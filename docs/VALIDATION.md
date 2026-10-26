@@ -2,7 +2,13 @@
 
 ## Current preview
 
-Version 1.0.22 (build 122) is a source-only branding update: the visible app name becomes 117 and the repository becomes zschwendi/117-vision. Runtime, input, presentation, save, cloud and bundle identities are unchanged. Build 122 has not been built, installed or device-tested by this update; the most recent installed build recorded below is Build121, whose display name is Keyship. The Build120/Build121 evidence below is historical and unchanged.
+Version 1.0.23 (build 123) adds iPad/iPhone keyboard, mouse, trackpad and touch aiming, Native resolution and display-maximum frame-rate requests. A fresh iPhoneOS device-SDK build compiled all 60 native units and 20 Swift sources, linked and signed successfully. The package reports 117 / 1.0.23 / 123, includes both indirect-input and high-refresh opt-ins, and passes strict signature verification. Compiled input hashes were checked against the final source. This is a local package, not a device test.
+
+Focused source checks cover input ownership, stale-event fencing, queued clicks, pointer capture, two-finger secondary clicks, presentation transitions, graphics admission, display-rate changes and allocation rollback. The native and Swift input fixtures and graphics checks pass; native checks also pass with ASan/UBSan. The original timing-function fixture verifies the mobile rate hook preserves elapsed game time, cinematic/timedemo behavior and the saved limiter setting; that fixture explicitly skips without privately generated game code. Synthetic Metal checks exercise the resize/readback path. All 22 mobile builder tests pass.
+
+Build 123 has not been installed or launched on a device. Magic Keyboard pointer capture, tap settings, aiming feel, sustained performance at Native/Display maximum, and mobile gameplay still need physical acceptance. The shared visionOS source is SDK-checked; no build 123 Vision Pro package or installation is claimed. The most recent installed build recorded below remains Build121, whose display name is Keyship. Existing save restoration is verified below; live iCloud delivery remains unverified.
+
+Build 122 was the source-only rename to 117 / zschwendi/117-vision. Its public GitHub source workflow passed. The Build120/Build121 evidence below is historical and unchanged.
 
 Build120 was built, signed, installed and played on a physical Vision Pro. User feedback described substantially improved handling.
 

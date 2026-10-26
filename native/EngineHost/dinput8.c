@@ -16,6 +16,7 @@
 #include <stdlib.h>
 #include <limits.h>
 #include <stdatomic.h>
+#include "device_input.inc"
 static _Atomic uint64_t diagnostic_gamepad_reads, diagnostic_keyboard_events, diagnostic_acquire_lost;
 uint64_t host_dinput_keyboard_events(void) { return atomic_load(&diagnostic_keyboard_events); }
 uint64_t host_dinput_gamepad_reads(void) { return atomic_load(&diagnostic_gamepad_reads); }
@@ -71,6 +72,7 @@ typedef struct {
     HaloSenseGesturePulse gesture; /* only synthetic gesture key-downs */
     uint64_t sense_app_epoch; /* controller-derived events cannot cross app ownership */
     uint64_t grenade_epoch; /* committed Sense release; zero for ordinary input */
+    uint64_t device_generation; /* hardware keyboard key-down; pruned across a device fence */
 } BufEvent;
 #define MAX_BUF_EVENTS 128
 
@@ -315,7 +317,7 @@ static void joy_queue_event(DIObj *o, uint32_t ofs, uint32_t data) {
         o->buf_overflowed = 1;
     }
     BufEvent *e = &o->buf[o->buf_tail];
-    memset(&e->gesture, 0, sizeof e->gesture); e->sense_app_epoch = 0; e->grenade_epoch = 0;
+    memset(&e->gesture, 0, sizeof e->gesture); e->sense_app_epoch = 0; e->grenade_epoch = 0; e->device_generation = 0;
     e->ofs = ofs; e->data = data;
     e->time = (uint32_t)(host_monotonic_ns() / 1000000ull);
     e->seq = ++o->event_seq;
@@ -357,8 +359,35 @@ static bool gamepad_keyboard_mouse_enabled(void) {
  * write engine state, and never emit Cross=Enter during campaign gameplay. */
 /* DirectInput owns arrow/menu navigation; USER32 also samples Return/Escape
  * for original text dialogs that do not consume the DirectInput key state. */
-static void keyboard_base_state(uint8_t out[256], HostGCSnapshot *owner) {
+/* Delivery clock for hardware pulses (device_input.inc): the original game
+ * tick from the same structure the Sense dual weapon update reads, except in
+ * native menus, whose UI consumes every input pass. Read-only. */
+#ifdef HOST_DEVICE_INPUT_TESTING
+static void (*device_input_test_after_snapshot)(void);
+#endif
+static DeviceClock device_clock(void) {
+    DeviceClock clock = { .now_ns = host_monotonic_ns(), .menu = host_dinput_menu_active() };
+    if (!clock.menu && engine_flat_base) {
+        uint32_t candidate = G32(0x006F1D6Cu);
+        if (candidate >= 0x10000u && candidate <= UINT32_MAX - 16u) { clock.tick = G32(candidate + 12u); clock.tick_valid = 1; }
+    }
+    return clock;
+}
+/* The hardware keyboard source (device_input.inc) merges here, before any
+ * controller decision, so it works with no controller and is never subject
+ * to the controller handback gate. device_keys/device_generation receive its
+ * contribution and generation from one synchronized snapshot. */
+static void keyboard_base_state(uint8_t out[256], HostGCSnapshot *owner, uint8_t *device_keys,
+                                uint64_t *device_generation, int consume) {
     memcpy(out, host_keyboard_state, 256);
+    uint8_t hardware[256]; DeviceClock clock = device_clock();
+    uint64_t generation = device_input_keyboard(hardware, &clock, consume);
+#ifdef HOST_DEVICE_INPUT_TESTING
+    if (device_input_test_after_snapshot) device_input_test_after_snapshot(); /* a fence racing this read */
+#endif
+    for (int i = 0; i < 256; i++) out[i] |= hardware[i];
+    if (device_keys) memcpy(device_keys, hardware, 256);
+    if (device_generation) *device_generation = generation;
     HostGCSnapshot pad = {0};
     if (!hostgc_poll(&pad)) { memset(owner, 0, sizeof *owner); return; }
     *owner = pad;
@@ -410,9 +439,10 @@ static uint8_t gesture_scan(int action) {
     default: return 0;
     }
 }
-static int keyboard_state_with_gesture(uint8_t out[256], HaloSenseGesturePulse *gesture) {
+static int keyboard_state_with_gesture(uint8_t out[256], HaloSenseGesturePulse *gesture, uint8_t *device_keys,
+                                       uint64_t *device_generation) {
     HostGCSnapshot owner = {0};
-    keyboard_base_state(out, &owner);
+    keyboard_base_state(out, &owner, device_keys, device_generation, 1);
     uint32_t clock = 0, tick = 0;
     int gameplay = owner.connected && owner.spatial && !host_dinput_menu_active() &&
         gamepad_keyboard_mouse_enabled();
@@ -437,14 +467,16 @@ static int keyboard_state_with_gesture(uint8_t out[256], HaloSenseGesturePulse *
     }
     return owner.connected && owner.spatial;
 }
-void host_dinput_keyboard_state(uint8_t out[256]) {
+uint64_t host_dinput_keyboard_state_with_device(uint8_t out[256], uint8_t device_keys[256]) {
     /* USER32 uses this snapshot only for Return/Escape. It must not start or
      * advance a gameplay gesture pulse between the game's DI input reads. */
-    HostGCSnapshot owner = {0};
-    keyboard_base_state(out, &owner);
+    HostGCSnapshot owner = {0}; uint64_t device_generation = 0;
+    keyboard_base_state(out, &owner, device_keys, &device_generation, 0);
     if (!owner.connected || !owner.spatial || host_dinput_menu_active() || !gamepad_keyboard_mouse_enabled())
         halo_sense_gesture_cancel();
+    return device_generation;
 }
+void host_dinput_keyboard_state(uint8_t out[256]) { (void)host_dinput_keyboard_state_with_device(out, NULL); }
 static int sense_grenade_di_pulse(int gameplay) {
     uint32_t clock=0,tick=0;
     if(gameplay&&engine_flat_base){uint32_t p=G32(0x006F1D6Cu);if(p>=0x10000u&&p<=UINT32_MAX-16u){clock=p;tick=G32(p+12u);}}
@@ -462,7 +494,8 @@ void host_dinput_mouse_buttons_state(uint8_t out[8]) {
     if (pad.connected && !pad.spatial) halo_sense_grenade_ordinary_read(); /* an unused Sense pulse never reaches this pad's throw */
     if (pad.buttons[HOSTGC_BTN_LSHOULDER] || (pad.spatial && sense_grenade_di_pulse(1))) out[1] |= 0x80;
 }
-static void keyboard_prune_gestures(DIObj *o, const uint8_t keys[256], const HaloSenseGesturePulse *current, int spatial) {
+static void keyboard_prune_gestures(DIObj *o, const uint8_t keys[256], const uint8_t device_keys[256],
+                                    uint64_t device_generation, const HaloSenseGesturePulse *current, int spatial) {
     int kept = 0;
     uint64_t app_epoch = hostgc_app_input_epoch();
     int app_blocked = hostgc_app_input_blocked();
@@ -476,8 +509,25 @@ static void keyboard_prune_gestures(DIObj *o, const uint8_t keys[256], const Hal
             memset(&event.gesture, 0, sizeof event.gesture);
         if (event.sense_app_epoch && (event.sense_app_epoch != app_epoch || app_blocked)) {
             if (event.ofs < 256 && (event.data & 0x80) &&
-                ((host_keyboard_state[event.ofs] & 0x80) || (!app_blocked && !spatial && (keys[event.ofs] & 0x80))))
-                event.sense_app_epoch = 0; /* keyboard, or an unblocked ordinary pad, now owns this press */
+                ((host_keyboard_state[event.ofs] & 0x80) || (device_keys[event.ofs] & 0x80) ||
+                 (!app_blocked && !spatial && (keys[event.ofs] & 0x80))))
+            {
+                /* keyboard, or an unblocked ordinary pad, now owns this press.
+                 * A hardware-keyboard owner takes its generation so its own
+                 * fence still removes the pending down. */
+                event.sense_app_epoch = 0;
+                if (!(host_keyboard_state[event.ofs] & 0x80) && (device_keys[event.ofs] & 0x80))
+                    event.device_generation = device_generation;
+            }
+            else continue;
+        }
+        /* A queued hardware key-down from before a device fence (app UI,
+         * inactive scene, focus/source loss) never reaches the game unless
+         * the key is down again now: a fence clears the device, so a device
+         * key down now is a fresh press. Its release still follows. */
+        if (event.device_generation && event.device_generation != device_generation) {
+            if (event.ofs < 256 && (event.data & 0x80) && (keys[event.ofs] & 0x80))
+                event.device_generation = (device_keys[event.ofs] & 0x80) ? device_generation : 0;
             else continue;
         }
         if (event.gesture.action && !halo_sense_gesture_event_valid(&event.gesture)) continue;
@@ -486,10 +536,10 @@ static void keyboard_prune_gestures(DIObj *o, const uint8_t keys[256], const Hal
     o->buf_count = kept; o->buf_tail = (o->buf_head + kept) % MAX_BUF_EVENTS;
 }
 static void keyboard_buffer_events(DIObj *o) {
-    uint8_t keys[256]; HaloSenseGesturePulse gesture = {0};
-    uint64_t app_epoch = hostgc_app_input_epoch();
-    int spatial = keyboard_state_with_gesture(keys, &gesture);
-    keyboard_prune_gestures(o, keys, &gesture, spatial);
+    uint8_t keys[256], device_keys[256]; HaloSenseGesturePulse gesture = {0};
+    uint64_t app_epoch = hostgc_app_input_epoch(), device_generation = 0;
+    int spatial = keyboard_state_with_gesture(keys, &gesture, device_keys, &device_generation);
+    keyboard_prune_gestures(o, keys, device_keys, device_generation, &gesture, spatial);
     if (!o->buffer_size) return;
     if (!o->have_key_last) {
         memcpy(o->key_last, keys, sizeof o->key_last);
@@ -501,8 +551,12 @@ static void keyboard_buffer_events(DIObj *o) {
         uint8_t before = o->key_last[dik] & 0x80u;
         if (now != before) {
             joy_queue_event(o, dik, now);
-            /* Sense or ordinary controller key-downs, never physical keys. */
-            if (now && !(host_keyboard_state[dik] & 0x80))
+            /* Sense or ordinary controller key-downs, never physical keys.
+             * Hardware keyboard downs carry the device generation instead:
+             * the controller gate must never hold or release them. */
+            if (now && (device_keys[dik] & 0x80) && !(host_keyboard_state[dik] & 0x80))
+                o->buf[(o->buf_tail + MAX_BUF_EVENTS - 1) % MAX_BUF_EVENTS].device_generation = device_generation;
+            else if (now && !(host_keyboard_state[dik] & 0x80))
                 o->buf[(o->buf_tail + MAX_BUF_EVENTS - 1) % MAX_BUF_EVENTS].sense_app_epoch = app_epoch;
             if (now && gesture.action && dik == gesture_scan(gesture.action))
                 o->buf[(o->buf_tail + MAX_BUF_EVENTS - 1) % MAX_BUF_EVENTS].gesture = gesture;
@@ -819,11 +873,23 @@ static void method_dev(EngineCPU *cpu, DIObj *o, int i) {
         memset(GPTR(buf), 0, n);
         if (!o->acquired) RET_STDCALL(DIERR_NOTACQUIRED, 3);
         if (o->kind == DEV_KEYBOARD) {
-            uint8_t keys[256]; keyboard_state_with_gesture(keys, NULL);
+            uint8_t keys[256]; keyboard_state_with_gesture(keys, NULL, NULL, NULL);
             memcpy(GPTR(buf), keys, n < 256 ? n : 256);
         } else if (o->kind == DEV_MOUSE) {
-            if (n >= 12) { S32(buf, (uint32_t)host_mouse_dx); S32(buf + 4, (uint32_t)host_mouse_dy); S32(buf + 8, (uint32_t)host_mouse_dz); }
-            if (n > 12) { uint8_t merged[8]; host_dinput_mouse_buttons_state(merged); uint32_t buttons = n - 12 < 8 ? n - 12 : 8; memcpy(GPTR(buf + 12), merged, buttons); }
+            /* The hardware mouse/touch source is merged into this read only;
+             * the legacy globals keep their own producers and reset. */
+            int32_t device_dx, device_dy; uint8_t device_buttons[HOST_DEVICE_BUTTON_COUNT];
+            DeviceClock clock = device_clock();
+            device_input_mouse(&device_dx, &device_dy, device_buttons, &clock);
+            if (n >= 12) {
+                int64_t mx = (int64_t)host_mouse_dx + device_dx, my = (int64_t)host_mouse_dy + device_dy;
+                mx = mx > INT32_MAX ? INT32_MAX : mx < INT32_MIN ? INT32_MIN : mx;
+                my = my > INT32_MAX ? INT32_MAX : my < INT32_MIN ? INT32_MIN : my;
+                S32(buf, (uint32_t)(int32_t)mx); S32(buf + 4, (uint32_t)(int32_t)my); S32(buf + 8, (uint32_t)host_mouse_dz);
+            }
+            if (n > 12) { uint8_t merged[8]; host_dinput_mouse_buttons_state(merged);
+                for (int b = 0; b < 8; b++) merged[b] |= device_buttons[b];
+                uint32_t buttons = n - 12 < 8 ? n - 12 : 8; memcpy(GPTR(buf + 12), merged, buttons); }
             host_mouse_dx = host_mouse_dy = host_mouse_dz = 0;
         } else {
             HostGCSnapshot cur; uint32_t hr = joy_poll_acquired(o, &cur);

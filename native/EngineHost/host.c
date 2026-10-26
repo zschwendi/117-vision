@@ -293,13 +293,15 @@ void host_page_stats(uint64_t out[3]) {
     out[2] = PAGE_END - PAGE_START;
     pthread_mutex_unlock(&page_lock);
 }
-uint32_t guest_page_alloc(uint32_t size) {
-    if (!size) return 0;
+/* One search, claim and zeroing path for both entry points, all under
+ * page_lock: a caller either owns a whole zeroed run or nothing changed.
+ * Returns 0 (nothing claimed) when the size cannot fit or no run is free;
+ * *why says which, for the fatal caller's log. */
+enum { PAGE_ALLOC_OK = 0, PAGE_ALLOC_TOO_LARGE = 1, PAGE_ALLOC_EXHAUSTED = 2 };
+static uint32_t page_alloc(uint32_t size, int *why) {
+    *why = PAGE_ALLOC_OK;
     uint64_t rounded = ((uint64_t)size + PAGE_GRANULARITY - 1u) & ~(uint64_t)(PAGE_GRANULARITY - 1u);
-    if (rounded > PAGE_END - PAGE_START) {
-        host_log("guest page allocation too large (%u bytes)", size);
-        host_exit(3);
-    }
+    if (rounded > PAGE_END - PAGE_START) { *why = PAGE_ALLOC_TOO_LARGE; return 0; }
     uint32_t count = (uint32_t)(rounded / PAGE_GRANULARITY);
     pthread_mutex_lock(&page_lock);
     uint32_t run = 0, first = 0;
@@ -309,8 +311,7 @@ uint32_t guest_page_alloc(uint32_t size) {
     }
     if (run != count) {
         pthread_mutex_unlock(&page_lock);
-        host_log("guest page space exhausted (+%u bytes)", size);
-        host_exit(3);
+        *why = PAGE_ALLOC_EXHAUSTED; return 0;
     }
     page_allocations[first] = count;
     for (uint32_t i = 1; i < count; i++) page_allocations[first + i] = PAGE_CONTINUATION;
@@ -327,6 +328,25 @@ uint32_t guest_page_alloc(uint32_t size) {
     }
     pthread_mutex_unlock(&page_lock);
     return a;
+}
+uint32_t guest_page_alloc(uint32_t size) {
+    if (!size) return 0;
+    int why;
+    uint32_t a = page_alloc(size, &why);
+    if (why == PAGE_ALLOC_TOO_LARGE) {
+        host_log("guest page allocation too large (%u bytes)", size);
+        host_exit(3);
+    }
+    if (why == PAGE_ALLOC_EXHAUSTED) {
+        host_log("guest page space exhausted (+%u bytes)", size);
+        host_exit(3);
+    }
+    return a;
+}
+uint32_t guest_page_try_alloc(uint32_t size) {
+    if (!size) return 0;
+    int why;
+    return page_alloc(size, &why);
 }
 int guest_page_free(uint32_t addr) {
     if (addr < PAGE_START || addr >= PAGE_END || (addr & (PAGE_GRANULARITY - 1u))) return 0;

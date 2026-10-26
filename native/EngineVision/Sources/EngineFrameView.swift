@@ -5,12 +5,22 @@ import GameController
 struct EngineFrameView: UIViewRepresentable {
     func makeCoordinator() -> Renderer { Renderer() }
     func makeUIView(context: Context) -> MTKView {
+#if os(iOS)
+        let view: MTKView = EngineFrameMTKView(frame: .zero, device: MTLCreateSystemDefaultDevice())
+#else
         let view = MTKView(frame: .zero, device: MTLCreateSystemDefaultDevice())
+#endif
         view.backgroundColor = UIColor(red: 0.025, green: 0.045, blue: 0.065, alpha: 1)
         view.isOpaque = true
         view.colorPixelFormat = .bgra8Unorm_srgb
         view.clearColor = MTLClearColor(red: 0.003, green: 0.008, blue: 0.014, alpha: 1)
+#if os(iOS)
+        // The launch request (or the saved choice before launch); the view
+        // lowers it to its screen's maximum once it is in a window.
+        view.preferredFramesPerSecond = Int(enginevision_mobile_presenter_fps(0))
+#else
         view.preferredFramesPerSecond = 60
+#endif
         view.enableSetNeedsDisplay = false
         view.isPaused = false
         let controllerEvents = GCEventInteraction()
@@ -46,6 +56,9 @@ struct EngineFrameView: UIViewRepresentable {
         }
         func mtkView(_ view: MTKView, drawableSizeWillChange size: CGSize) {}
         func draw(in view: MTKView) {
+#if os(iOS)
+            (view as? EngineFrameMTKView)?.drawn()
+#endif
             _ = frame?.refresh()
             guard let pass = view.currentRenderPassDescriptor, let drawable = view.currentDrawable,
                   let queue, let command = queue.makeCommandBuffer() else { return }
@@ -84,3 +97,27 @@ struct EngineFrameView: UIViewRepresentable {
         """
     }
 }
+
+#if os(iOS)
+/// The iOS presenter: asks the runtime for its rate whenever it reaches a
+/// window and whenever that window's screen, size or traits may have changed,
+/// and once a second while drawing, so a move to a screen with a lower
+/// maximum lowers both this view's request and the engine's present cadence
+/// (enginevision_mobile_presenter_fps). The engine's back buffer never moves.
+final class EngineFrameMTKView: MTKView {
+    private var framesSinceCheck = 0
+    override func didMoveToWindow() { super.didMoveToWindow(); updateFrameRate() }
+    override func layoutSubviews() { super.layoutSubviews(); updateFrameRate() }
+    /// Called from each draw; re-checks about once a second.
+    func drawn() {
+        framesSinceCheck += 1
+        if framesSinceCheck >= max(preferredFramesPerSecond, 1) { updateFrameRate() }
+    }
+    private func updateFrameRate() {
+        framesSinceCheck = 0
+        guard let screen = window?.windowScene?.screen else { return }
+        let rate = Int(enginevision_mobile_presenter_fps(Int32(clamping: screen.maximumFramesPerSecond)))
+        if rate > 0, preferredFramesPerSecond != rate { preferredFramesPerSecond = rate }
+    }
+}
+#endif

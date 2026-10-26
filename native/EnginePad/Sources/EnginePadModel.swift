@@ -10,6 +10,9 @@ final class EnginePadModel: ObservableObject {
     @Published private(set) var frameSize = ""
     private var timer: Timer?
     private let haptics = EngineHaptics()
+    /// Hardware keyboard, mouse/trackpad and touch (device_input.h). Separate
+    /// from the controller lease below; it keeps its own ownership fence.
+    let input = EnginePadInputRouter()
     private var inputLease = EnginePadInputLease(begin: { hostgc_app_input_begin() },
                                                  renew: { Int32(hostgc_app_input_renew($0)) },
                                                  end: { hostgc_app_input_end($0) })
@@ -51,5 +54,8 @@ final class EnginePadModel: ObservableObject {
         if enginevision_frame_info(&frame) { frameSize = "\(frame.width) × \(frame.height)" }
         haptics.pump()
         inputLease.update(owned: uiOwnsInput)
+        // Only a running engine takes hardware input: nothing typed or tapped
+        // over the startup overlay can queue and arrive once Halo is ready.
+        input.update(engineActive: state == ENGINEVISION_RUNNING)
     }
 }

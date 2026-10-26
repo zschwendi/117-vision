@@ -6,6 +6,7 @@
 #include <stdint.h>
 #include "panorama.h"
 #include "sense_reticle_art.h"
+#include "mobile_graphics.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -197,6 +198,83 @@ bool enginevision_core_telemetry(EngineVisionCoreTelemetry *out);
  * Gaze comes from a system interaction; taps remain queued until the engine
  * cursor reaches their target. This is not a Boolean held-button API. */
 void enginevision_pointer(float u, float v, int on_panel, int action);
+
+/* iPad/iPhone launch graphics (mobile_graphics.h has the policy, and
+ * frame_limit.h the time-update hook). Sizes are pixels; refresh is frames a
+ * second requested of the display and of the engine, not a measured rate.
+ * Call on the main thread; off it the window reads as unknown and the plan
+ * falls back safely. */
+typedef struct {
+    int32_t display_width, display_height;   /* whole panel, long edge first; 0 unknown */
+    int32_t view_width, view_height;         /* the game's window as oriented now; 0 unknown */
+    int32_t display_max_fps;                 /* the current screen's maximum; 0 unknown */
+    int32_t native_width, native_height;     /* largest 4:3 game viewport in the window; 0 unknown */
+    int32_t render_width, render_height;     /* engine back buffer requested */
+    int32_t refresh;                         /* launch rate request */
+    uint32_t size_source, flags;             /* HALO_MOBILE_SIZE_*, HALO_MOBILE_FLAG_* */
+    int32_t launched;                        /* 1: fixed for this process by a launch */
+    /* An admitted -vidmode was already in HALO_CMDLINE_EXTRA and was kept. */
+    int32_t external_vidmode;
+    /* The rate in force now (the launch request, lowered to the presenter's
+     * screen when that supports less) and whether it lifts Halo's saved
+     * 30 fps throttle at the time update (cinematics are never lifted). */
+    int32_t effective_refresh, lifts_throttle;
+    /* The presenter's current screen maximum once it reported one (else the
+     * launch measurement, display_max_fps, which is never updated). */
+    int32_t current_display_max_fps;
+    /* Estimates of frame-sized buffers (HaloMobileMemory): steady, a same-size
+     * live Reset overlap, and any Reset into this size from a mode at the
+     * admission bound. Not a process memory ceiling or proof of headroom. */
+    uint64_t memory_steady_bytes, memory_peak_bytes, memory_guest_bytes;
+    uint64_t memory_peak_worst_bytes;
+    /* Engine back buffer of the newest frame and its steady estimate; 0 before one. */
+    int32_t current_width, current_height;
+    uint64_t memory_current_bytes;
+    /* Measured after launch: every live renderer target's colour and depth
+     * attachments (Halo's extra targets included), and live guest pages. */
+    uint64_t renderer_target_bytes, guest_live_bytes;
+    uint32_t renderer_targets;
+    /* Engine flat presents held to the rate in force, cumulative. */
+    uint64_t paced_frames, paced_waits, paced_wait_ns, paced_late, paced_restarts;
+    /* Time updates run with the throttle lifted; kept for a cinematic;
+     * declined because the executable's constants were unexpected; waits so
+     * a frame was not shorter than Halo's dt floor. */
+    uint64_t limiter_lifted, limiter_cinematic, limiter_declined, limiter_floor_waits;
+} EngineMobileGraphicsPlan;
+/* The plan the saved choices give in this window now: what the next launch
+ * would fix (launched = 0). False only for a NULL argument. */
+bool enginevision_mobile_graphics_plan(EngineMobileGraphicsPlan *out);
+/* The plan this process fixed, with the newest frame size, measured memory
+ * and pacing counters. False (out zeroed) before a launch fixed one. */
+bool enginevision_mobile_graphics_launched(EngineMobileGraphicsPlan *out);
+/* Fix the plan for this process before enginevision_start (main thread).
+ *   0         fixed and applied: HALO_CMDLINE_EXTRA holds exactly one admitted
+ *             -vidmode (appended as "-vidmode W,H,60", or an admitted one that
+ *             was already there, kept), and the rate is set.
+ *   EALREADY  an earlier call already fixed it; nothing changes.
+ *   EINVAL    refused: HALO_VIDMODE, or a -vidmode already in
+ *             HALO_CMDLINE_EXTRA, is outside 640 x 480 ... 2880 x 2160,
+ *             malformed, repeated or embedded in another token; the two
+ *             disagree; or HALO_CMDLINE_EXTRA contains a double quote or a
+ *             control character (it could hide or swallow a -vidmode).
+ *   E2BIG     refused: the command line would not fit, so the mode could
+ *             be cut off.
+ *   other     refused: writing HALO_CMDLINE_EXTRA failed; the errno setenv
+ *             reported (ENOMEM if it reported none).
+ * On refusal nothing is fixed (no plan, cadence or time-update change), the
+ * environment is left as setenv left it on failure (unchanged), the runtime
+ * status says why, and out (if given) holds the refused plan with its flags.
+ * A later call re-measures and may succeed. The caller must not start the
+ * engine on a refusal; enginevision_start refuses with the same code. */
+int enginevision_mobile_prepare_launch(EngineMobileGraphicsPlan *out);
+/* preferredFramesPerSecond for the presenter on a screen whose maximum is
+ * screen_max_fps (0 unknown). Before launch: the saved choice on that screen.
+ * After launch: the launch's rate choice re-resolved on a known screen
+ * (Display maximum follows that screen's maximum up or down; 60 and 30 stay
+ * ceilings; never above the screen), and the engine's present cadence and
+ * time-update hook move with it. An unknown screen keeps the rate in force.
+ * Resolution never changes. Main thread. */
+int32_t enginevision_mobile_presenter_fps(int32_t screen_max_fps);
 
 /* Existing d3d9.c links against this macOS-named interface. EngineVision owns
  * this platform replacement; it creates no UIKit/AppKit objects. */

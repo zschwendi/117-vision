@@ -1,10 +1,10 @@
 {
-  "version": "1.0.22",
+  "version": "1.0.23",
   "formatVersion": 1,
   "license": "MIT for original project code; third-party and asset notices retained",
   "scope": "Source, documentation, generated app artwork and public configuration. Retail game content, translated executable output, private registration, saves, signed apps and runtime mod packs are excluded.",
-  "fileCount": 551,
-  "totalBytes": 18383842,
+  "fileCount": 574,
+  "totalBytes": 18694245,
   "files": [
     {
       "path": ".github/ISSUE_TEMPLATE/bug_report.yml",
@@ -18,8 +18,8 @@
     },
     {
       "path": ".github/workflows/source-checks.yml",
-      "bytes": 730,
-      "sha256": "5af45460d242b020c10f4bf430c8214e1c9ea7eaf380c7f00e97497951c6e273"
+      "bytes": 1520,
+      "sha256": "4d2ab353259bff3b1960cb3469c8eff83d6ce13ec9bd1a1880a831c742b056c9"
     },
     {
       "path": ".gitignore",
@@ -38,8 +38,8 @@
     },
     {
       "path": "CHANGELOG.md",
-      "bytes": 4561,
-      "sha256": "f111d339502f882358cd85ff14f1bcf1b84a00c951c1f903d05ce077f66c00a5"
+      "bytes": 5643,
+      "sha256": "c6eb171e743ae93a13444a4982552ec72f9e88354a18504c0f41821e004a96de"
     },
     {
       "path": "CONTRIBUTING.md",
@@ -53,8 +53,8 @@
     },
     {
       "path": "README.md",
-      "bytes": 4322,
-      "sha256": "8059f2a48e66929b651526a37b0030fc5ea20f0fbef146b2559dcb3316096f4d"
+      "bytes": 4536,
+      "sha256": "62d45f08ad90d42c15c7ad717b5f0602820817df7808be1ca4d782b0172712f8"
     },
     {
       "path": "THIRD_PARTY.md",
@@ -64,7 +64,7 @@
     {
       "path": "VERSION",
       "bytes": 7,
-      "sha256": "c35ad504909101c7e61ecdee29d8ed743a9908fe4e8f1798bcc2a7ed28c645cc"
+      "sha256": "0dae8656732ed0a8caa4d8fe86bb4634f54f1705109061909400e39b501ed3fa"
     },
     {
       "path": "decompilation/c9acf0c46954/extra-function-entries.txt",
@@ -93,8 +93,8 @@
     },
     {
       "path": "docs/BUILDING.md",
-      "bytes": 14042,
-      "sha256": "3010e96a6bcecae04b2bbd30c9bb2f28b3814784239864657c1d414dcffdb024"
+      "bytes": 14152,
+      "sha256": "2fa2e9b2d5bf0261d37ac6776e019484d34c982077521798df1d422c052dd27f"
     },
     {
       "path": "docs/COMPLETE_RELEASE.md",
@@ -108,8 +108,8 @@
     },
     {
       "path": "docs/FEATURES.md",
-      "bytes": 1372,
-      "sha256": "5c6312c727cc0898695cd87015e167adc4bf47207531fde7ee1a1f4747a5afef"
+      "bytes": 1632,
+      "sha256": "02261adc2f71cd35150059d811ee6066b5152f494d3453bd1e3dba19d70a70fa"
     },
     {
       "path": "docs/GRAPHICS_QUALITY.md",
@@ -118,8 +118,8 @@
     },
     {
       "path": "docs/KNOWN_ISSUES.md",
-      "bytes": 2396,
-      "sha256": "f0a65fbb3dfea08435cb4f3a013e8ee52d48e88e73ffd770d549f58b14681355"
+      "bytes": 2812,
+      "sha256": "411b1960380429f0f73593584f4a8f05341f533ea6c4268f5f47a3d3d9e0d2c3"
     },
     {
       "path": "docs/RELEASING.md",
@@ -133,8 +133,8 @@
     },
     {
       "path": "docs/VALIDATION.md",
-      "bytes": 12435,
-      "sha256": "0e621ce0e1816beec0cd6b949ee1225edd57f60eee3fb8a3d5cb2b164cadc881"
+      "bytes": 13809,
+      "sha256": "a215d04621a0a2bded064d4c7ef2183fab6bd8b0562cef4f2ed5f08356c3b79f"
     },
     {
       "path": "docs/assets/README.md",
@@ -158,8 +158,8 @@
     },
     {
       "path": "native/EngineHost/Makefile",
-      "bytes": 5575,
-      "sha256": "9cd0373e50c8ec171f5f3c78fa2ebb3aca1d464656ad5630f9ec5d075764774e"
+      "bytes": 5607,
+      "sha256": "c4b70fcde58b3e9df37cf510bdda42fa0e3b3e3d3e3b1bf5e47137cd0c575fb9"
     },
     {
       "path": "native/EngineHost/a10_control.inc",
@@ -193,8 +193,8 @@
     },
     {
       "path": "native/EngineHost/d3d9.c",
-      "bytes": 95161,
-      "sha256": "e862f8913d9953824fc6f4dc7caa9d579183aee45d4f4048d21e4e961b1a5c37"
+      "bytes": 99570,
+      "sha256": "8488db822d4229906cbbb0b7d241354ad7d596f0a474fcdb524f0b502475e9ec"
     },
     {
       "path": "native/EngineHost/d3d9_capture.inc",
@@ -217,9 +217,19 @@
       "sha256": "2ee21a93d411a25f5bc6c7ad5ca477562fb215e06b71e311c725f10736d562e8"
     },
     {
+      "path": "native/EngineHost/device_input.h",
+      "bytes": 5413,
+      "sha256": "0fe6cf08ad654a5e374bdb0af94880d4083837c7a2514ca8aaac2ef42f1b4114"
+    },
+    {
+      "path": "native/EngineHost/device_input.inc",
+      "bytes": 15344,
+      "sha256": "392d9fd4d93ff130502d483701ff8c0a51a54929a48b0cc6b7056461bb504c27"
+    },
+    {
       "path": "native/EngineHost/dinput8.c",
-      "bytes": 49907,
-      "sha256": "779e0b0d9c3452d4b6b4cbbafef1f45297f221d07d3b163e470b6d4d276e87b1"
+      "bytes": 54304,
+      "sha256": "7e8a0705066b92a2637392e764c9e91180305cb8b89753c992f98f31f7a1c0d4"
     },
     {
       "path": "native/EngineHost/directsound.c",
@@ -262,6 +272,16 @@
       "sha256": "42d6397a43b0b1fb90172d13fc41217dde1c370e11b3730d18f75d6799620a28"
     },
     {
+      "path": "native/EngineHost/frame_limit.h",
+      "bytes": 6241,
+      "sha256": "a4b444f094476de972b15fe3b6d80dfa362267a7f8909ed4035b489b8c87da40"
+    },
+    {
+      "path": "native/EngineHost/frame_limit_hooks.inc",
+      "bytes": 4927,
+      "sha256": "836a568945ef902ddf03454b4b51aeb748f44ef114b8e4cfea0c8dd5a7aa122c"
+    },
+    {
       "path": "native/EngineHost/frame_pacer.h",
       "bytes": 17491,
       "sha256": "118c8482d05bb5489c074a6189e29eb24dceefc475455d87128ddf3a7a743a62"
@@ -273,13 +293,13 @@
     },
     {
       "path": "native/EngineHost/gamecontroller.h",
-      "bytes": 8666,
-      "sha256": "592847ddcd199432f4404286f153c07b173b88a3e093094ac453bea2532e23ac"
+      "bytes": 9001,
+      "sha256": "06032ffeac6007f03486ca0e98a4892a5b13104dd9c9bf157e33453c3bc8a4f1"
     },
     {
       "path": "native/EngineHost/gamecontroller.m",
-      "bytes": 47717,
-      "sha256": "21322422e0ea61ddb9713b01f13d8c8a146e9f1bd7cd6d8424326a4f345bb8ee"
+      "bytes": 47929,
+      "sha256": "cfdf09d9988da86ebdaf724a7e7a8a9b9a17cbd8460dd7812c12f17c82649f56"
     },
     {
       "path": "native/EngineHost/gamecontroller_guard.h",
@@ -313,13 +333,13 @@
     },
     {
       "path": "native/EngineHost/host.c",
-      "bytes": 34624,
-      "sha256": "47c2a43afaf1551a790536a214cd96da475594997b9864d74c24d6a000c20441"
+      "bytes": 35419,
+      "sha256": "a826d8983b808130002122f82609a2709d76b1fe611bc1bcf7d0142f8bcc80f2"
     },
     {
       "path": "native/EngineHost/host.h",
-      "bytes": 8241,
-      "sha256": "cdff798bc57369872970db1dba8efa9aed7dcd755031a9708c82b861b1387e13"
+      "bytes": 8505,
+      "sha256": "0cce9660af65ca88d3df02b0a9f046fbfb80b6cda4037b761485274dfa93d31b"
     },
     {
       "path": "native/EngineHost/host_path.inc",
@@ -343,13 +363,13 @@
     },
     {
       "path": "native/EngineHost/metalrenderer.h",
-      "bytes": 28939,
-      "sha256": "2afc15d109f4d41146e31fd8e15e03cd8f69aced63693bb928b937b6a9a8ed11"
+      "bytes": 29122,
+      "sha256": "842451bb75da011d86f0b3660df99550703ec82c62939831c1cdff8a53aefc72"
     },
     {
       "path": "native/EngineHost/metalrenderer.m",
-      "bytes": 202962,
-      "sha256": "f4684be1f541aa17e8ba80c66f113efe03830c9f2998c2db3b7054f118910e44"
+      "bytes": 204640,
+      "sha256": "82237033d149d4c56554164cd327486a990a09307993e6d2ed139fe550f3dfe0"
     },
     {
       "path": "native/EngineHost/metalrenderer_post.inc",
@@ -385,6 +405,11 @@
       "path": "native/EngineHost/metalwin.m",
       "bytes": 14302,
       "sha256": "c09a1a81bc8f1afbf012eef09c41a3f10035d579f6894fc11415f393132c3691"
+    },
+    {
+      "path": "native/EngineHost/mobile_graphics.h",
+      "bytes": 23734,
+      "sha256": "a11d88da1777116f5b61f9681b5b3d27255a6cb5b172262f668e0312b5764af7"
     },
     {
       "path": "native/EngineHost/model_capture_boundary.h",
@@ -428,8 +453,8 @@
     },
     {
       "path": "native/EngineHost/overrides.c",
-      "bytes": 15742,
-      "sha256": "f9809538fe1cc332a305e278b4aa1eb437448925c100326539839f81134563a7"
+      "bytes": 15971,
+      "sha256": "4a17c99b65d818ee38136f2b2f09122f5cbaf9d9a2becc1c07b351d763af33fe"
     },
     {
       "path": "native/EngineHost/panorama.h",
@@ -708,8 +733,8 @@
     },
     {
       "path": "native/EngineHost/shims_misc.c",
-      "bytes": 32822,
-      "sha256": "bafd3db4ab129d09caa7257d08ea0d8687742dd73441dd06f9d03d5f6f1f71fd"
+      "bytes": 34819,
+      "sha256": "a221663c0e4573ae4e61d2fe0b59a7c69b107987d12db2a70d20337600e3ed67"
     },
     {
       "path": "native/EngineHost/smaa_msl.inc",
@@ -802,6 +827,11 @@
       "sha256": "dec456953030ed76d7b9fda9cc3c3db00c82157a1888ccc9cc78bf0b79e32a15"
     },
     {
+      "path": "native/EngineHost/tests/test_d3d9_admission.c",
+      "bytes": 6934,
+      "sha256": "5c2895587b77258d418ebd9c4495653dbeff004ba1431baed74015bf111eb83f"
+    },
+    {
       "path": "native/EngineHost/tests/test_d3d9_destalpha_blend.c",
       "bytes": 3580,
       "sha256": "1c15922ee44962ea62772198feec4d8b49c7280363c425b6b69674faddf8a0b2"
@@ -818,8 +848,8 @@
     },
     {
       "path": "native/EngineHost/tests/test_d3d9_reset.c",
-      "bytes": 5183,
-      "sha256": "27b19b32ddbcf3a1285773cba6ad9d66f5d5fbae1f8e020f2a09ae2f91d9e8eb"
+      "bytes": 5581,
+      "sha256": "d77d9c21bff23c81af91ba463bf14363a2cc344b1cc4391467bc72e13928a6be"
     },
     {
       "path": "native/EngineHost/tests/test_d3d9_resource_lifetime.c",
@@ -862,6 +892,11 @@
       "sha256": "0473c07afb4de86393a8e416da1f92c89fda339b4240fa2ccc9e8b61e2dab6c3"
     },
     {
+      "path": "native/EngineHost/tests/test_d3d9_transaction.c",
+      "bytes": 9803,
+      "sha256": "ce6d4c92023dda7914f4bb94cc8ba03fc0341b01c7bd6eb19498bd9aa47a75fe"
+    },
+    {
       "path": "native/EngineHost/tests/test_desktop_video_dialog.c",
       "bytes": 3009,
       "sha256": "7807bcdb203cb263fc6ca860336ff1072a802fb7e34d2221a0ff75863040dde0"
@@ -872,9 +907,19 @@
       "sha256": "2a018fc6d7dfbaeef84cca20ae92faf7d82c7821856e1be99d9571769e5ed2c9"
     },
     {
+      "path": "native/EngineHost/tests/test_device_input.m",
+      "bytes": 32182,
+      "sha256": "cf350b66ebfeb8413f9c7124580522e2c46c7a918ab77d0a06f0adeca9e5ddb1"
+    },
+    {
+      "path": "native/EngineHost/tests/test_device_messages.c",
+      "bytes": 4829,
+      "sha256": "d3300a3365f7c8940e5d322b0deb3d56bd846a67a978226c905119cf42868157"
+    },
+    {
       "path": "native/EngineHost/tests/test_dinput_lifecycle.c",
-      "bytes": 13594,
-      "sha256": "ba449557b72163477d0928b58c55affed1092817e2ee0a824466d34fdec970c0"
+      "bytes": 13648,
+      "sha256": "a2c473236d5b7468e7566c8aae5d4b8dd174bfb1ae3427db9eb172564bc12496"
     },
     {
       "path": "native/EngineHost/tests/test_directsound_lifetime.c",
@@ -893,8 +938,8 @@
     },
     {
       "path": "native/EngineHost/tests/test_dispatch_interest.py",
-      "bytes": 2849,
-      "sha256": "9746cfc18e217a2d42136527b7abd168148fa52a7cb3b3cdbe4815bc64a703d7"
+      "bytes": 3174,
+      "sha256": "0ee23b0510ffe8bf2a35601382116091a907d0c9a24274305296613ec8711d47"
     },
     {
       "path": "native/EngineHost/tests/test_draw_indices.c",
@@ -930,6 +975,11 @@
       "path": "native/EngineHost/tests/test_fp_vertex_capture.c",
       "bytes": 4735,
       "sha256": "b411f658c5d56d47db997aa62a89368d811a0af110533f7c23a6aa95d0e8f490"
+    },
+    {
+      "path": "native/EngineHost/tests/test_frame_limit_original.c",
+      "bytes": 12373,
+      "sha256": "8e17181245e428599a97aa8c5c35a0c1d0aba1dfde7279a1c26b7111e2b244e3"
     },
     {
       "path": "native/EngineHost/tests/test_frame_pacer.c",
@@ -970,6 +1020,11 @@
       "path": "native/EngineHost/tests/test_guest_heap_sound_owners.c",
       "bytes": 3449,
       "sha256": "a29a692b71b216262743290153990ac496185607a285446339a89bccda40487a"
+    },
+    {
+      "path": "native/EngineHost/tests/test_guest_page_try.c",
+      "bytes": 5088,
+      "sha256": "399b0932d79dcf31f324d333a397c8b3eaea6f3efd6a2d926f3e5a8a3e715e5e"
     },
     {
       "path": "native/EngineHost/tests/test_guest_pages.c",
@@ -1070,6 +1125,16 @@
       "path": "native/EngineHost/tests/test_mixer_quality.c",
       "bytes": 6717,
       "sha256": "355f1bc141f5423ecfa7767267731de8f106455a3d4e027dbd9fac6af64dbba7"
+    },
+    {
+      "path": "native/EngineHost/tests/test_mobile_graphics.c",
+      "bytes": 18832,
+      "sha256": "3f03faae9d66bc1bdb04a00793f6cdcd8755055702b0e946562dd8f0522706c1"
+    },
+    {
+      "path": "native/EngineHost/tests/test_mobile_graphics_metal.m",
+      "bytes": 6637,
+      "sha256": "f13562fc3dd40cf91ca8aebd74ccbba6e9983c363070eefe943215728f2f966f"
     },
     {
       "path": "native/EngineHost/tests/test_model_vertex_capture.c",
@@ -1537,14 +1602,19 @@
       "sha256": "4b1d6073e7fedd234675a3068081c364e01cc5f276453b454d2f7bca213b4397"
     },
     {
+      "path": "native/EnginePad/INPUT.md",
+      "bytes": 5288,
+      "sha256": "0abbceb7939650ec012b09bc1a78e5c4c3da90252cf623a6c232414dee6f3698"
+    },
+    {
       "path": "native/EnginePad/Info.plist",
-      "bytes": 1433,
-      "sha256": "f77f0b8673dfe6d2d4470118833b46b837159e18efe0036cec81b5534f56ccb8"
+      "bytes": 1553,
+      "sha256": "cbc2b2504409d8d561a46fe28943ae9ff50889570f90c6e93d305e3f1118cc63"
     },
     {
       "path": "native/EnginePad/README.md",
-      "bytes": 5087,
-      "sha256": "96e395854f894b0502a99ca7101864fb7b71212ac1512ee6891302f96bec7646"
+      "bytes": 5178,
+      "sha256": "df387ed71cbdf552858081fc43e113a2738470fcaa59b1155f54e8e9299cd157"
     },
     {
       "path": "native/EnginePad/Resources/Assets.xcassets/AppIcon.appiconset/Contents.json",
@@ -1573,8 +1643,13 @@
     },
     {
       "path": "native/EnginePad/Sources/EnginePad-Bridging-Header.h",
-      "bytes": 263,
-      "sha256": "31b41e4084ace59879786eaaff826c1fe28c0d4c334aaadff789202c5450d9df"
+      "bytes": 289,
+      "sha256": "26280edda097987ed2db3689edeec11887da9af4050b1b824146841754274dca"
+    },
+    {
+      "path": "native/EnginePad/Sources/EnginePadGameController.swift",
+      "bytes": 5529,
+      "sha256": "ac34c91bffc47855de9056f80813771995d9202a17280db67d6112138a4f8657"
     },
     {
       "path": "native/EnginePad/Sources/EnginePadInputLease.swift",
@@ -1582,29 +1657,64 @@
       "sha256": "eae29cb0ce2f421afcd9c4bc015ba9079591eb9bb649664bfcff24dd3b4775e6"
     },
     {
+      "path": "native/EnginePad/Sources/EnginePadInputPolicy.swift",
+      "bytes": 5879,
+      "sha256": "10a5825d596f382e1e4a4ca111f469e1db12bf32340545b6e12ec5c440917df6"
+    },
+    {
+      "path": "native/EnginePad/Sources/EnginePadInputRouter.swift",
+      "bytes": 12456,
+      "sha256": "295c403f56e0883ca2ea2c122731a4397361d09f014359ecc665fbc6403374a1"
+    },
+    {
+      "path": "native/EnginePad/Sources/EnginePadInputSession.swift",
+      "bytes": 14824,
+      "sha256": "7f105e332d5fd137a14175794d39fb80cc861ddf54bb25b25ff1288527604068"
+    },
+    {
+      "path": "native/EnginePad/Sources/EnginePadInputSurface.swift",
+      "bytes": 5513,
+      "sha256": "9f1d374dfa32f261fc0b580970a876e606c625cd9462644d37fb21b92b0add1a"
+    },
+    {
       "path": "native/EnginePad/Sources/EnginePadModel.swift",
-      "bytes": 2315,
-      "sha256": "cf043666622f0eefe282487eefc627da712f90554271df6ada53e3baa27734ee"
+      "bytes": 2730,
+      "sha256": "253b89aba817c47d5b8568cb91e6daaf792058618ed3335282bcb932166a1683"
+    },
+    {
+      "path": "native/EnginePad/Sources/EnginePadPresentationState.swift",
+      "bytes": 1584,
+      "sha256": "8a8a464f9f0cab5d373fe35d06fa5e5b6fd9b069a67138eb3d672a661a43adf3"
     },
     {
       "path": "native/EnginePad/Sources/EnginePadRuntime.m",
-      "bytes": 2610,
-      "sha256": "0075e62ff1deaa548cb3794771048bad6f5effb312500eaff226bb40f0121565"
+      "bytes": 2489,
+      "sha256": "511ce6ea5497d761a0a718194866662db83261cd5c75e4b65034b9239701cbd8"
     },
     {
       "path": "native/EnginePad/Sources/EnginePadSettingsView.swift",
-      "bytes": 2836,
-      "sha256": "fa471085c9905456b45a0e4a67dd8f7c0a728bac1ecb7d69c78b3f81c72a0fc5"
+      "bytes": 6170,
+      "sha256": "5255bcc4841172eb6a1bd396077d04e1c893d7b471c19d690c54d420a90a6ec2"
     },
     {
       "path": "native/EnginePad/Sources/MasterCheefPadApp.swift",
-      "bytes": 18775,
-      "sha256": "ed9064a7e9446eb0328b48fc08ea07168168572a7e4dd3fa583d3fc3e2cde495"
+      "bytes": 20599,
+      "sha256": "97169446fc1ef68bcbf1ffb098da6b864dcc7c7d5c26930a1ed3d7226cd40a92"
+    },
+    {
+      "path": "native/EnginePad/Tests/EnginePadInputPolicyValidation.swift",
+      "bytes": 10428,
+      "sha256": "fcaff42b7da6793c7d98c8bc283d416bb5c089f78b71f435ecd74b92de7d9bee"
+    },
+    {
+      "path": "native/EnginePad/Tests/EnginePadInputSessionValidation.swift",
+      "bytes": 19550,
+      "sha256": "094e2a3ad29dd05e00add81a40dfd611066f0d54c60d18edf617206e89419a20"
     },
     {
       "path": "native/EnginePad/project.yml",
       "bytes": 4867,
-      "sha256": "24655afafc1b069ed69c022fc1411b5ad0403be6c5e0a24015699db4834d66c1"
+      "sha256": "e2de66715dcd5b563e901cad62d535f5b0323258be7112f092dc86fcaf7539eb"
     },
     {
       "path": "native/EngineReuse/engine_arm64_fenv_prototype.h",
@@ -1623,8 +1733,8 @@
     },
     {
       "path": "native/EngineReuse/engine_hooks.h",
-      "bytes": 4019,
-      "sha256": "15afb7dabcc96650b5639c1696c6819d8250151d4881107273f92acfcabf2ff5"
+      "bytes": 4680,
+      "sha256": "d6860fb6646b1cea4977fdce64203f12c6f878dcb42641de1844cfdf5fd4dfbc"
     },
     {
       "path": "native/EngineReuse/engine_registers.h",
@@ -1788,8 +1898,8 @@
     },
     {
       "path": "native/EngineVision/Sources/EngineFrameView.swift",
-      "bytes": 4621,
-      "sha256": "c5bd0043ce2b1cd85d0de154252568aea2c0a971186d030ec4daae535a3f9948"
+      "bytes": 6258,
+      "sha256": "45ad14bf6d4a586efbad237aa6b3c29140fb2b8ea4120b0880ca75bd7a8278de"
     },
     {
       "path": "native/EngineVision/Sources/EngineGatherDiagnostics.swift",
@@ -1988,13 +2098,13 @@
     },
     {
       "path": "native/EngineVision/Sources/EngineVisionBridge.h",
-      "bytes": 11185,
-      "sha256": "fb0c3fd5a719e29e00ffc5a1981896938b66f23d7de525b63d302a315b0bcadf"
+      "bytes": 16459,
+      "sha256": "891e96f1ca6824dad2b46c0b8c2520714fe59e63404caedd24bc1a3fff2980b6"
     },
     {
       "path": "native/EngineVision/Sources/EngineVisionRuntime.m",
-      "bytes": 51914,
-      "sha256": "4427287d0d6ac9aad87ac40b6116bb34c2d90e827ec87944199601d7fd718a3c"
+      "bytes": 67169,
+      "sha256": "a4ec5869fc740f3c5db6b94bd14f1dcb05df13ce2af242e88304e5ce524668a9"
     },
     {
       "path": "native/EngineVision/Sources/EngineWorldCadence.swift",
@@ -2162,6 +2272,11 @@
       "sha256": "37df15a88be9968642afd2a89e77173badd0a701c7b5acd8bc427d60862d9a06"
     },
     {
+      "path": "native/EngineVision/Tests/MobileGraphicsRuntimeValidation.m",
+      "bytes": 26060,
+      "sha256": "bb91f3a32c31028fb232b545012820a1cdb7aaa3dbdbd76605157bca39ff4e71"
+    },
+    {
       "path": "native/EngineVision/Tests/MutableAssetPreservationMain.swift",
       "bytes": 7742,
       "sha256": "7f387f57b6432d1b65f7db0c49612f60d5049a3e3edd2510c9faa1b09fae311d"
@@ -2309,7 +2424,7 @@
     {
       "path": "native/EngineVision/project.yml",
       "bytes": 4940,
-      "sha256": "3033ab807c7e2ed567c13e91bb9e222bdc881b5ae8347e0c6b90b3821df5185a"
+      "sha256": "91f1454c086e00a72f87bc1dc3f6aa20d1fad3309192ff70e7f99a2d4ceeaa93"
     },
     {
       "path": "native/Tests/EngineRuntimeContract.c",
@@ -2559,7 +2674,7 @@
     {
       "path": "tools/build_engine_vision.py",
       "bytes": 16846,
-      "sha256": "bf7e4003dc8ed9ee61c643163715f4deb18737c8c76e3217d3be09bfb4fcd6b3"
+      "sha256": "a2bbace92df495a5683ea9a28ffb9340e72a96c9f0f4af1b1e297ae54cf07acc"
     },
     {
       "path": "tools/build_engine_vision_simulator.py",
@@ -2688,8 +2803,8 @@
     },
     {
       "path": "tools/run_source_checks.py",
-      "bytes": 37213,
-      "sha256": "5406e474111d0a732e8eb0b2e21872a5da8af59787c56241653d79f821089c61"
+      "bytes": 40098,
+      "sha256": "64475fe7f351fc2ac0eff9369acd7bdbcc641193bd6b2d0f81587f43881bc674"
     },
     {
       "path": "tools/setup_halo.py",
@@ -2699,7 +2814,7 @@
     {
       "path": "tools/test_build_engine_ipad.py",
       "bytes": 14453,
-      "sha256": "81335718d2043882e2ed908a8ca4e8d217bbf8f6bead39ad0a022fc773e117bc"
+      "sha256": "c4a3ec5b6446c725ee3a99caf4273a5fad4b95898431468322335b414ecd3ac7"
     },
     {
       "path": "tools/test_censhine_import.py",

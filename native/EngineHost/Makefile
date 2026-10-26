@@ -48,7 +48,7 @@ $(OBJ)/metalrenderer.o: metalrenderer.m metalrenderer.h metalshader.h metalrende
 $(OBJ)/host.o: host_snapshot.h
 $(OBJ)/overrides.o: a10_control.inc a10_gamepad.inc hsc_trace.inc gamecontroller.h panorama_hooks.inc panorama.h panorama_overlay_scope.h panorama_budget.h native_gather.h native_gather_tree.h gather_diagnostics.h
 $(OBJ)/host.o $(OBJ)/shims_kernel32.o $(OBJ)/threading.o: threading.h
-$(OBJ)/dinput8.o: gamecontroller.h
+$(OBJ)/dinput8.o: gamecontroller.h device_input.h device_input.inc
 $(OBJ)/d3d9.o: stateblock.h d3d9_render.inc d3d9_capture.inc fp_vertex_capture.inc d3d9_process_vertices.inc process_vertices.h vertex_shader_cpu.h rhw_declaration.h panorama_render.inc panorama.h panorama_graphics.h panorama_graphics.inc panorama_foveation.h halo_settings.h metalrenderer.h texture_decode.h gamecontroller.h texture_content_hash.h third_party/xxhash/xxhash.h
 $(OBJ):
 	mkdir -p $(OBJ)

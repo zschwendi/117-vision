@@ -1,5 +1,12 @@
 # Changelog
 
+## 117 icon — 1.0.27 / build 127
+
+- Replaces the ambiguous plasma loop with a bold 117 mark containing cyan plasma.
+- Keeps the complete icon together on one visible visionOS plane, removing the mismatched floating foreground and background.
+- Uses the same original artwork on iPhone and iPad. The in-app numeral 1 cover and custom artwork remain unchanged.
+- Preserves build 126's launcher and gameplay behavior.
+
 ## 117 launcher — 1.0.26 / build 126
 
 - Makes the cover itself the launch button in a fitted, non-scrolling library.

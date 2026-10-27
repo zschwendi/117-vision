@@ -2,11 +2,12 @@
 
 ## App artwork
 
-117 uses original cyan-and-violet plasma artwork for the app icon. The mobile
-icon is opaque; the visionOS icon has a transparent plasma foreground over
-an abstract teal background. These are generated project artwork, not extracted
-game textures, characters or official branding. The exact new generation and
-transparent-layer prompts are retained in [117-plasma-icon.json](117-plasma-icon.json).
+117 uses an original bold numeral mark with cyan plasma on a dark navy background.
+The same opaque artwork is used on mobile and the visionOS back layer. The
+required visionOS front layer is fully transparent, keeping the visible image
+together instead of separating it across depth planes. These are generated
+project artwork, not extracted game textures, characters or official branding.
+The generation prompt is retained in [117-plasma-icon.json](117-plasma-icon.json).
 
 The launcher ships a native numeral **1** as its default game cover. Players
 can use the artwork menu to choose their own image or restore the default.

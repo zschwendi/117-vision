@@ -19,7 +19,7 @@ DOCUMENTATION_ART = {
 }
 # Original generated app artwork is also admitted only at its reviewed path and
 # exact digest. Other image files remain subject to the binary-file guard.
-APP_ICON_ART = {'native/EnginePad/Resources/Assets.xcassets/AppIcon.appiconset/117-plasma.png': 'a2587c733a560988c29ca11ea2c55ef0d823a7fdffb6af7bd6377dd9a5a18713', 'native/EngineVision/Resources/Assets.xcassets/AppIcon.solidimagestack/Front.solidimagestacklayer/Content.imageset/117-plasma-foreground.png': 'fde13617981ce448f8b43b29d4e013856cbce6ff6f2e469fb7c9b217f5bdace7', 'native/EngineVision/Resources/Assets.xcassets/AppIcon.solidimagestack/Back.solidimagestacklayer/Content.imageset/117-plasma-background.png': '55d760f98712d0e112389116c564739d769bc3c5235e648b6bc5a4eb02a4909b'}
+APP_ICON_ART = {'native/EnginePad/Resources/Assets.xcassets/AppIcon.appiconset/117-plasma.png': '1f62a7f9210cdfc751d4700f63f9124e9f554796e92aefd1e20fee2261ea99d8', 'native/EngineVision/Resources/Assets.xcassets/AppIcon.solidimagestack/Front.solidimagestacklayer/Content.imageset/117-plasma-foreground.png': 'f12ddfea20dcca2fa350d75d5ed2ae76a4fffbcdfd2b8f2357558b90072dab9f', 'native/EngineVision/Resources/Assets.xcassets/AppIcon.solidimagestack/Back.solidimagestacklayer/Content.imageset/117-plasma-background.png': '1f62a7f9210cdfc751d4700f63f9124e9f554796e92aefd1e20fee2261ea99d8'}
 BAD_SUFFIX = {'.exe', '.dll', '.map', '.iso', '.ipa', '.p12', '.p8', '.pfx', '.pem', '.key',
               '.mobileprovision', '.provisionprofile', '.o', '.a', '.dylib', '.so', '.pyc',
               '.zip', '.tpf', '.hvt', '.hvs', '.mc-save', '.bgra', '.mov', '.mp4', '.jsonl', '.log', '.reg'}

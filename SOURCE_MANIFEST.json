@@ -1,10 +1,10 @@
 {
-  "version": "1.0.26",
+  "version": "1.0.27",
   "formatVersion": 1,
   "license": "MIT for original project code; third-party and asset notices retained",
   "scope": "Source, documentation, generated app artwork and public configuration. Retail game content, translated executable output, private registration, saves, signed apps and runtime mod packs are excluded.",
   "fileCount": 586,
-  "totalBytes": 15187154,
+  "totalBytes": 13459946,
   "files": [
     {
       "path": ".github/ISSUE_TEMPLATE/bug_report.yml",
@@ -38,8 +38,8 @@
     },
     {
       "path": "CHANGELOG.md",
-      "bytes": 7629,
-      "sha256": "9f4848d772c88f5f6ef8a92524b8ae15df8d2eebe26446d233d234548e1552e3"
+      "bytes": 8047,
+      "sha256": "3bb02ef30022e723056c2bdceeabfeaeb536150ad50955832c18533599bf9bd6"
     },
     {
       "path": "CONTRIBUTING.md",
@@ -64,7 +64,7 @@
     {
       "path": "VERSION",
       "bytes": 7,
-      "sha256": "b355d874a16534088e84fbc6f520d01ebc6947671b699a56d68f3aadde56f6f5"
+      "sha256": "9f07c8557e8d6636d33aeec5959d505adc55ed870127069cee03be4ea0f63970"
     },
     {
       "path": "decompilation/c9acf0c46954/extra-function-entries.txt",
@@ -93,8 +93,8 @@
     },
     {
       "path": "docs/BUILDING.md",
-      "bytes": 14144,
-      "sha256": "cb67567c605d62ab3d0d98ab3edca09edef744473c4ff4d33be9583702523ba8"
+      "bytes": 14139,
+      "sha256": "4b0e522157f5dc9a9584070db9c57ea3b02eb8c91100271f32960dd646d5bd7a"
     },
     {
       "path": "docs/COMPLETE_RELEASE.md",
@@ -133,18 +133,18 @@
     },
     {
       "path": "docs/VALIDATION.md",
-      "bytes": 18677,
-      "sha256": "06812b79c4760cc97d8875f8e47de6d91ea6f27339f330400a0573873c7432a8"
+      "bytes": 19849,
+      "sha256": "abae20316550aebb66747fb3373fd8ce74a8753bbf13c3300a7e2293faed598a"
     },
     {
       "path": "docs/assets/117-plasma-icon.json",
-      "bytes": 2233,
-      "sha256": "f8f38f9a2c902e28de35e1252fe0a9346c78a587402a065f5518a34938925da5"
+      "bytes": 2123,
+      "sha256": "92d8c2cf4169be08a68be8e84ef953112dcb8e52250885c904e9b842a6941c3c"
     },
     {
       "path": "docs/assets/README.md",
-      "bytes": 3736,
-      "sha256": "c73008cda248fc4819cb7c63235e081eee2f2c82c40e4e36c2cfb69d17bebb75"
+      "bytes": 3811,
+      "sha256": "32de7da90b981f5c4cde939c6833c8b7c9c52bc74585b19bb418a35d4e16bf97"
     },
     {
       "path": "docs/assets/master-chef-header.png",
@@ -1678,8 +1678,8 @@
     },
     {
       "path": "native/EnginePad/Resources/Assets.xcassets/AppIcon.appiconset/117-plasma.png",
-      "bytes": 1514647,
-      "sha256": "a2587c733a560988c29ca11ea2c55ef0d823a7fdffb6af7bd6377dd9a5a18713"
+      "bytes": 1139365,
+      "sha256": "1f62a7f9210cdfc751d4700f63f9124e9f554796e92aefd1e20fee2261ea99d8"
     },
     {
       "path": "native/EnginePad/Resources/Assets.xcassets/AppIcon.appiconset/Contents.json",
@@ -1764,7 +1764,7 @@
     {
       "path": "native/EnginePad/project.yml",
       "bytes": 5031,
-      "sha256": "361bf2c29fdc95639ffebbaaac998d14cd7f1f7d4b3b6aac7ffc6b9f95e346b5"
+      "sha256": "629e8a9d4894a47e9024a0f6ff58d710e08e5436a60a6a813315ad04ead0af38"
     },
     {
       "path": "native/EngineReuse/engine_arm64_fenv_prototype.h",
@@ -1818,8 +1818,8 @@
     },
     {
       "path": "native/EngineVision/Resources/Assets.xcassets/AppIcon.solidimagestack/Back.solidimagestacklayer/Content.imageset/117-plasma-background.png",
-      "bytes": 982963,
-      "sha256": "55d760f98712d0e112389116c564739d769bc3c5235e648b6bc5a4eb02a4909b"
+      "bytes": 1139365,
+      "sha256": "1f62a7f9210cdfc751d4700f63f9124e9f554796e92aefd1e20fee2261ea99d8"
     },
     {
       "path": "native/EngineVision/Resources/Assets.xcassets/AppIcon.solidimagestack/Back.solidimagestacklayer/Content.imageset/Contents.json",
@@ -1838,8 +1838,8 @@
     },
     {
       "path": "native/EngineVision/Resources/Assets.xcassets/AppIcon.solidimagestack/Front.solidimagestacklayer/Content.imageset/117-plasma-foreground.png",
-      "bytes": 1514022,
-      "sha256": "fde13617981ce448f8b43b29d4e013856cbce6ff6f2e469fb7c9b217f5bdace7"
+      "bytes": 4144,
+      "sha256": "f12ddfea20dcca2fa350d75d5ed2ae76a4fffbcdfd2b8f2357558b90072dab9f"
     },
     {
       "path": "native/EngineVision/Resources/Assets.xcassets/AppIcon.solidimagestack/Front.solidimagestacklayer/Content.imageset/Contents.json",
@@ -2484,7 +2484,7 @@
     {
       "path": "native/EngineVision/project.yml",
       "bytes": 4971,
-      "sha256": "6c13b34cd7449ed37f52b52a8a5a07dab5413a1b99ea335c7b15460b69a725a5"
+      "sha256": "d77015e5fa340ff1cb49b00d87a20ee2715c0f596cd63bd36c65a89955fde35b"
     },
     {
       "path": "native/Tests/EngineRuntimeContract.c",
@@ -2734,7 +2734,7 @@
     {
       "path": "tools/build_engine_vision.py",
       "bytes": 16857,
-      "sha256": "fb5a4e824336e2b047e5c48e5211727df578a3234c141bc21ae01dc306350e73"
+      "sha256": "fb500b1f9bd7b4dc87d9d7032023493f02a8378b72a92c8ed5390021a8539952"
     },
     {
       "path": "tools/build_engine_vision_simulator.py",
@@ -2754,7 +2754,7 @@
     {
       "path": "tools/check_repository_hygiene.py",
       "bytes": 4468,
-      "sha256": "0e3bbe0d11d72bda1cd154032eab6173dff552a497b53313c7ec62ac44641b3c"
+      "sha256": "5ae4aab7a1573045b5a99b371da5db6a2335c75fb2e7b4f2efbf7e71300788da"
     },
     {
       "path": "tools/engine_reuse/decode.py",
@@ -2874,7 +2874,7 @@
     {
       "path": "tools/test_build_engine_ipad.py",
       "bytes": 14453,
-      "sha256": "aa15fe8afc9a58e099b5ba664a66b69f2355fb55451f185bc76b384b828c49a7"
+      "sha256": "17d38c36d5826d283e40121f2ac98f8d2b55cf31ac441d0d6b797a9923ac2831"
     },
     {
       "path": "tools/test_censhine_import.py",

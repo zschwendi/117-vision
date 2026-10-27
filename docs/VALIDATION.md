@@ -1,6 +1,14 @@
 # 117 validation
 
-## Current preview: build 126
+## Current preview: build 127
+
+Version 1.0.27 replaces the C-shaped plasma loop with a bold 117 numeral mark. Both platform asset catalogs compile without diagnostic errors or warnings. The visionOS icon keeps the complete opaque artwork on its back layer and uses a fully transparent required front layer. The mobile icon uses the same artwork. The native numeral 1 cover and custom-artwork preferences are unchanged.
+
+Build 127 is an artwork and package-version update using build 126's verified executable. Independent review confirms all 48 Mach-O sections and every non-signature byte remain identical; no engine or Swift sources were recompiled. Strict signature verification passes, with the same signing certificate, provisioning profile and cloud entitlements. Gameplay, launcher code, bundle identity and save locations are unchanged.
+
+Build 127 is installed on Vision Pro without an automated launch. All 55 local save files match their pre-install hashes. The iPhone/iPad source artwork is updated and its asset catalog compiles, but no new mobile package or physical iPad installation is claimed. Physical appearance and launcher acceptance remain pending.
+
+## Previous preview: build 126
 
 Version 1.0.26 addresses the build 125 launcher feedback: one fitted, non-scrolling game card starts or resumes Halo; the centered 117 menu contains Settings, including the preferred window/immersive mode. The duplicate controller status and decorative launcher animations are removed. Artwork customization remains available.
 

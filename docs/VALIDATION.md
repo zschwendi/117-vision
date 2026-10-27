@@ -1,10 +1,20 @@
 # 117 validation
 
-## Current preview: build 125
+## Current preview: build 126
+
+Version 1.0.26 addresses the build 125 launcher feedback: one fitted, non-scrolling game card starts or resumes Halo; the centered 117 menu contains Settings, including the preferred window/immersive mode. The duplicate controller status and decorative launcher animations are removed. Artwork customization remains available.
+
+A Play request made during an existing save operation is retained instead of silently dropped. The session coalesces repeated requests and suppresses new automatic checks while preparing Play. A bounded wait reports slow saves without clearing another operation's busy state or cancelling its writes; the normal migration, conflict, local-recovery and actual-runtime checks still gate the engine. The held-operation fixture passes 38 checks for late arrivals, pending Play, timeout, cancellation and save safety; the existing synchronization fixture passes 55 checks.
+
+Both build 126 device-SDK packages compile and sign as 117 / 1.0.26 / 126. Each platform compiled 60 native units, with 55 Vision Swift sources and 22 mobile Swift sources. The existing bundle/save identities and the mobile Vision-save seeding requirement remain intact. Build 126 is installed on Vision Pro without an automated launch. Physical launcher acceptance is pending; source checks do not establish that the reported on-device launch failure is resolved. New launch-state diagnostics distinguish a received tap, save wait and rejected engine start.
+
+## Previous preview: build 125
 
 Version 1.0.25 adds original plasma app icons, a numeral 1 default cover, and locally stored custom launcher artwork. The image-import fixture passes 21 checks covering orientation, downsampling, bounded decoding, metadata removal, persistence, invalid-input preservation and reset isolation. Full visionOS and iPad/iPhone Swift device-SDK typechecks pass.
 
-Both build 125 device-SDK packages compile and are signed. The Vision build freshly compiled all 60 native units and 55 Swift sources; the mobile build compiled 60 native units and 22 Swift sources. Build 125 is installed on Vision Pro, with all 55 existing save files verified unchanged, and was not automatically launched. The iPad/iPhone package is built but not installed. Physical launcher artwork, picker and controller interaction still require testing; source checks do not establish device acceptance. Custom artwork is local per device and is not part of cloud saves.
+Both build 125 device-SDK packages compile and are signed. The Vision build freshly compiled all 60 native units and 55 Swift sources; the mobile build compiled 60 native units and 22 Swift sources. Build 125 was installed on Vision Pro, with all 55 existing save files verified unchanged, and was not automatically launched. The iPad/iPhone package is built but not installed. Physical launcher artwork, picker and controller interaction still require testing; source checks do not establish device acceptance. Custom artwork is local per device and is not part of cloud saves.
+
+User testing of build 125 reported a stuck launcher, unresponsive Play/card actions, duplicate controller status and unwanted scrolling/animation. Build 126 is the corrective update for that report; physical confirmation remains pending.
 
 ## Previous preview: build 124
 

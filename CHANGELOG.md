@@ -1,5 +1,12 @@
 # Changelog
 
+## 117 launcher — 1.0.26 / build 126
+
+- Makes the cover itself the launch button in a fitted, non-scrolling library.
+- Centers a static 117 menu with Settings and moves the preferred presentation choice into Settings.
+- Removes duplicate controller status and decorative launcher animations.
+- Retains a launch request while a save operation finishes, with visible timeout feedback and the existing save safety gates preserved.
+
 ## 117 artwork — 1.0.25 / build 125
 
 - Replaces character-based app icons with original cyan-and-violet plasma artwork on Vision Pro, iPad and iPhone.

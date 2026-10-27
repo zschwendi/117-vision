@@ -169,10 +169,24 @@ final class EngineCloudSaveStore: ObservableObject {
 
     /// The caller must still check its actual runtime before starting the game.
     /// A cloud outage permits local play only after the required source was captured.
-    func prepareForPlay(gameRoot: URL, engineActive: Bool) async -> Bool {
-        guard !isBusy else { return false }
+    func prepareForPlay(gameRoot: URL, engineActive: Bool, currentOperationTimeout: TimeInterval = 30) async -> Bool {
+        // An automatic launch/foreground check may already own the save tree.
+        // Keep the user's play request while that owner finishes; never clear
+        // its busy flag, cancel its writes, or start Halo alongside it.
+        let timeout = currentOperationTimeout.isFinite ? max(0, currentOperationTimeout) : 30
+        let deadline = ProcessInfo.processInfo.systemUptime + timeout
+        while isBusy {
+            guard !Task.isCancelled else { return false }
+            guard ProcessInfo.processInfo.systemUptime < deadline else {
+                status = "Save checking is taking longer than expected. Wait for it to finish, then try again."
+                return false
+            }
+            do { try await Task.sleep(nanoseconds: 50_000_000) }
+            catch { return false }
+        }
+        guard !Task.isCancelled else { return false }
         await sync(gameRoot: gameRoot, engineActive: engineActive)
-        return canPlay && !engineActive && !(engineActivityCheck?() ?? false)
+        return !Task.isCancelled && canPlay && !engineActive && !(engineActivityCheck?() ?? false)
     }
 
     func sync(gameRoot: URL, engineActive: Bool) async {

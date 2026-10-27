@@ -18,6 +18,9 @@ jobs:
         with:
           persist-credentials: false
       - run: python3 tools/check_repository_hygiene.py --strict
+      # Reuse the existing real-store fixture suite; portable-only skips it.
+      - name: Cloud saves and input ownership
+        run: python3 -B tools/test_mobile_cloud_saves.py
       - run: python3 tools/run_source_checks.py --portable-only
       - run: python3 tools/run_source_checks.py --portable-only --sanitize
       # These source fixtures need Darwin frameworks/linker, but no iPad,

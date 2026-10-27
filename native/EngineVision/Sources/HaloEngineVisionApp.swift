@@ -229,28 +229,52 @@ final class EngineAppSession: ObservableObject {
     }
 
     func play(in mode: EngineDisplayMode) {
-        guard canPlay else { return }
+        EngineImmersiveTrace.shared.record("play.request:\(mode.rawValue) savesBusy=\(cloudSaves.isBusy)")
+        // A deliberate launch owns the next startup even if an automatic save
+        // check is still finishing. prepareForPlay waits for that owner, then
+        // rechecks the existing save/migration/conflict safety gates.
+        guard assets.phase == .ready, engine.canStart || engine.isActive,
+              !presentationBusy, !preparingPlay, !immersive.opening,
+              !quit.blocksPresentation else {
+            EngineImmersiveTrace.shared.record("play.rejected: transition or game not ready", state: UInt32(bitPattern: engine.state))
+            if !preparingPlay && !presentationBusy {
+                presentationMessage = quitMessage ?? "Halo is not ready to start. Open 117 → Game Data for details."
+            }
+            return
+        }
         presentationMessage = nil
         if engine.isActive {
             request(mode == .window ? .window : .immersive)
             return
         }
         preparingPlay = true
+        if cloudSaves.isBusy {
+            presentationMessage = "Checking your saves before starting Halo…"
+            EngineImmersiveTrace.shared.record("play.waitingForSaveCheck")
+        }
         Task { @MainActor [weak self] in
             guard let self else { return }
             defer { self.preparingPlay = false }
             let allowed = await self.cloudSaves.prepareForPlay(gameRoot: self.assets.rootURL, engineActive: false)
             self.engine.refresh()
-            guard allowed, !self.cloudSaves.isBusy, self.assets.phase == .ready,
+            guard allowed, self.applicationActive, !self.cloudSaves.isBusy, self.assets.phase == .ready,
                   self.engine.canStart, enginevision_runtime_state() == ENGINEVISION_IDLE else {
-                self.presentationMessage = self.cloudSaves.status
+                self.presentationMessage = self.applicationActive ? self.cloudSaves.status : "Return to 117 and select Halo to play."
+                EngineImmersiveTrace.shared.record("play.preparationStopped allowed=\(allowed) active=\(self.applicationActive) savesBusy=\(self.cloudSaves.isBusy)", state: UInt32(bitPattern: self.engine.state))
                 return
             }
             // The cloud watcher is retired for the rest of this process just
             // before the engine starts; saves then sync on the next launch.
             self.cloudSaves.stopCloudMonitoring()
+            self.presentationMessage = nil
+            EngineImmersiveTrace.shared.record("play.startingEngine")
             self.engine.start(root: self.assets.rootURL)
-            guard self.engine.isActive else { self.presentationMessage = self.engine.status; return }
+            guard self.engine.isActive else {
+                self.presentationMessage = self.engine.status
+                EngineImmersiveTrace.shared.record("play.engineDidNotStart", state: UInt32(bitPattern: self.engine.state))
+                return
+            }
+            EngineImmersiveTrace.shared.record("play.presenting:\(mode.rawValue)")
             self.request(mode == .window ? .window : .immersive)
         }
     }
@@ -432,6 +456,14 @@ final class EngineAppSession: ObservableObject {
     }
 
     private func refresh() {
+        engine.diagnostics.launcherState = [
+            "applicationActive": applicationActive, "sceneActionsBound": actions != nil,
+            "assetsReady": assets.phase == .ready, "canPlay": canPlay,
+            "preparingPlay": preparingPlay, "presentationBusy": presentationBusy,
+            "savesBusy": cloudSaves.isBusy, "savesPermitPlay": cloudSaves.canPlay,
+            "saveConflicts": cloudSaves.hasConflicts, "saveMigrationReady": cloudSaves.migrationReady,
+            "saveStatus": cloudSaves.status
+        ]
         engine.diagnostics.preparationStatus = assets.detail
         engine.diagnostics.preparationCopiedBytes = assets.copied
         engine.diagnostics.preparationTotalBytes = assets.total

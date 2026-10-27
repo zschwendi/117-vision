@@ -8,6 +8,26 @@ private final class LateLocationBox: @unchecked Sendable {
     func get() -> EngineCloudSaveLocation? { lock.lock(); defer { lock.unlock() }; return value }
 }
 
+/// Holds one real store operation at its metadata-discovery seam. The caller
+/// can observe a waiting launch without relying on disk timing or real iCloud.
+@MainActor private final class PlayMetadataGate {
+    var holdNext = false
+    private(set) var isHeld = false
+    private(set) var calls = 0
+    private var continuation: CheckedContinuation<Void, Never>?
+    func discover() async -> [URL] {
+        calls += 1
+        if holdNext {
+            holdNext = false
+            isHeld = true
+            await withCheckedContinuation { continuation = $0 }
+            isHeld = false
+        }
+        return []
+    }
+    func release() { continuation?.resume(); continuation = nil }
+}
+
 /// Synthetic late-arrival, coalescing, busy-deferral, iPhone-label and
 /// placeholder checks. Temporary folders only; no iCloud, device or real saves.
 @main struct CloudLateArrivalValidation {
@@ -161,6 +181,93 @@ private final class LateLocationBox: @unchecked Sendable {
         require(phone.pendingSync && countAfter == countBefore && read(save(phoneRoot)) == "iphone-local-D",
                 "Placeholder holds publication and keeps local progress")
         try fm.removeItem(at: placeholder)
-        print("PASS: \(checks) synthetic late-arrival, coalescing, busy-deferral, running-gate, iPhone-label and placeholder checks")
+
+        // Play requested during automatic sync waits for that operation, then
+        // runs the ordinary save-safety check exactly once before admission.
+        let playRoot = work.appendingPathComponent("play-wait"), playCloud = work.appendingPathComponent("play-cloud")
+        try fm.createDirectory(at: playCloud, withIntermediateDirectories: true)
+        try write("preserved-campaign", at: save(playRoot))
+        let gate = PlayMetadataGate()
+        let playStore = EngineCloudSaveStore(defaults: defaults(), recoveryFolder: work.appendingPathComponent("play-recovery"),
+            requiresVisionSeed: false, sourcePlatform: "Vision Pro",
+            cloudLocationProvider: { .init(folder: playCloud, account: "play-wait-account") },
+            metadataDiscovery: { _ in await gate.discover() })
+        playStore.engineActivityCheck = { false }
+        gate.holdNext = true
+        let automatic = Task { await playStore.sync(gameRoot: playRoot, engineActive: false) }
+        require(await wait { gate.isHeld && playStore.isBusy }, "Automatic sync owns the store before Play")
+        var launchFinished = false
+        let launch = Task {
+            let allowed = await playStore.prepareForPlay(gameRoot: playRoot, engineActive: false, currentOperationTimeout: 2)
+            launchFinished = true
+            return allowed
+        }
+        try await Task.sleep(nanoseconds: 100_000_000)
+        require(!launchFinished && playStore.isBusy && gate.calls == 1, "Play remains pending without stealing the save operation")
+        gate.release()
+        await automatic.value
+        require(await launch.value && !playStore.isBusy && gate.calls == 2,
+                "One pending Play performs one fresh safety check after automatic sync and is admitted")
+        require(read(save(playRoot)) == "preserved-campaign", "Waiting for Play preserves campaign bytes")
+
+        // A bounded timeout reports the wait, leaving the original owner in
+        // charge. Releasing that owner proves it can still finish normally.
+        gate.holdNext = true
+        let slow = Task { await playStore.sync(gameRoot: playRoot, engineActive: false) }
+        require(await wait { gate.isHeld && playStore.isBusy }, "Timeout fixture owns a real save operation")
+        let timeoutStart = ProcessInfo.processInfo.systemUptime
+        let timedOut = await playStore.prepareForPlay(gameRoot: playRoot, engineActive: false, currentOperationTimeout: 0.05)
+        require(!timedOut && playStore.isBusy && gate.isHeld && playStore.status.contains("taking longer"),
+                "Timed-out Play explains the wait without clearing busy or cancelling the owner")
+        require(ProcessInfo.processInfo.systemUptime - timeoutStart < 1, "Busy wait timeout is bounded")
+        gate.release(); await slow.value
+        require(!playStore.isBusy && read(save(playRoot)) == "preserved-campaign", "Original sync completes safely after Play times out")
+
+        // Cancelling the intent must not cancel a save mutation or start a
+        // second reconciliation after the original owner completes.
+        gate.holdNext = true
+        let cancellingOwner = Task { await playStore.sync(gameRoot: playRoot, engineActive: false) }
+        require(await wait { gate.isHeld && playStore.isBusy }, "Cancellation fixture owns a real save operation")
+        let callsBeforeCancel = gate.calls
+        let cancelledLaunch = Task { await playStore.prepareForPlay(gameRoot: playRoot, engineActive: false, currentOperationTimeout: 2) }
+        try await Task.sleep(nanoseconds: 50_000_000)
+        cancelledLaunch.cancel()
+        require(!(await cancelledLaunch.value) && playStore.isBusy && gate.isHeld,
+                "Cancelled Play is refused while the original save operation remains owned")
+        gate.release(); await cancellingOwner.value
+        require(gate.calls == callsBeforeCancel && !playStore.isBusy,
+                "Cancelled Play never starts another save check or admits the engine")
+
+        // Waiting cannot turn a known conflict or a missing Vision seed into
+        // permission to start. Exercise the same held-operation path for both.
+        let conflictRoot = work.appendingPathComponent("conflict-source")
+        try write("unrelated-cloud-progress", at: save(conflictRoot))
+        _ = try EngineSaveArchive.capture(gameRoot: conflictRoot, device: "Other Vision", engineActive: false).writeNew(in: playCloud)
+        gate.holdNext = true
+        let conflictOwner = Task { await playStore.sync(gameRoot: playRoot, engineActive: false) }
+        require(await wait { gate.isHeld && playStore.isBusy }, "Conflict fixture starts with an existing operation")
+        let conflictLaunch = Task { await playStore.prepareForPlay(gameRoot: playRoot, engineActive: false, currentOperationTimeout: 2) }
+        gate.release(); await conflictOwner.value
+        require(!(await conflictLaunch.value) && playStore.hasConflicts && read(save(playRoot)) == "preserved-campaign",
+                "Waiting Play still rejects conflicting cloud heads without changing local progress")
+        let seedRoot = work.appendingPathComponent("seed-wait"), seedCloud = work.appendingPathComponent("seed-cloud")
+        try fm.createDirectory(at: seedCloud, withIntermediateDirectories: true)
+        try write("bundled-default", at: save(seedRoot))
+        let seedGate = PlayMetadataGate()
+        let seedStore = EngineCloudSaveStore(defaults: defaults(), recoveryFolder: work.appendingPathComponent("seed-recovery"),
+            requiresVisionSeed: true, sourcePlatform: "iPad", migrationArchiveURL: work.appendingPathComponent("absent-play-seed"),
+            cloudLocationProvider: { .init(folder: seedCloud, account: "seed-wait-account") },
+            metadataDiscovery: { _ in await seedGate.discover() })
+        seedStore.engineActivityCheck = { false }
+        seedGate.holdNext = true
+        let seedOwner = Task { await seedStore.sync(gameRoot: seedRoot, engineActive: false) }
+        require(await wait { seedGate.isHeld && seedStore.isBusy }, "Seed fixture starts with an existing operation")
+        let seedLaunch = Task { await seedStore.prepareForPlay(gameRoot: seedRoot, engineActive: false, currentOperationTimeout: 2) }
+        seedGate.release(); await seedOwner.value
+        let seedAllowed = await seedLaunch.value
+        let seedArchives = try archives(seedCloud)
+        require(!seedAllowed && !seedStore.migrationReady && seedArchives.isEmpty,
+                "Waiting Play still requires the existing Vision save and never publishes bundled defaults")
+        print("PASS: \(checks) synthetic late-arrival, coalescing, busy-deferral, pending-Play, timeout, cancellation, save-safety and placeholder checks")
     }
 }

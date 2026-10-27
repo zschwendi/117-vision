@@ -28,7 +28,8 @@ struct EngineContentView: View {
                 if session.destination == .window { gameWindow }
                 else { library }
             }
-            .navigationTitle(session.destination == .window ? "Halo: Combat Evolved" : "Library")
+            .navigationTitle(session.destination == .window ? "Halo: Combat Evolved" : "")
+            .toolbar(session.destination == .library ? .hidden : .visible, for: .navigationBar)
             .toolbar { toolbar }
         }
         .libraryArtworkImporter()
@@ -111,44 +112,52 @@ struct EngineContentView: View {
                     .disabled(session.presentationBusy || session.quitBlocksPresentation)
                     .help("Return to the Library. Halo keeps running.")
             }
-            ToolbarItem(placement: .topBarTrailing) {
-                Button("Immersive", systemImage: "visionpro") {
-                    preferredPresentation = EngineDisplayMode.immersive.rawValue
-                    session.play(in: .immersive)
-                }
-                .disabled(!session.canPlay)
-            }
-        }
-        ToolbarItem(placement: .principal) {
-            Menu {
-                if engine.isActive && !session.quitBlocksPresentation {
-                    Button("Halo Menu", systemImage: "slider.horizontal.3") { session.showControls() }
-                }
-                Button("Settings", systemImage: "gearshape") { session.showSettings() }
-                if session.destination == .library { EngineLibraryArtworkActions() }
-                Button("Game Data", systemImage: "externaldrive") { activeSheet = .gameData }
-                Button("Controller", systemImage: "gamecontroller") { activeSheet = .controller }
-                Button("Cloud Saves", systemImage: "icloud") { activeSheet = .cloudSaves }
-                Button("Graphics Mods", systemImage: "sparkles") { activeSheet = .graphics }
-                Button("About \(EngineLibraryTheme.productName)", systemImage: "info.circle") { activeSheet = .about }
-            } label: {
-                EngineLibraryTitleLabel()
-                    .contentShape([.interaction, .hoverEffect], Capsule())
-                    .hoverEffect(.highlight)
-            }
-            .menuStyle(.button)
-            .buttonStyle(.plain)
-            .accessibilityLabel("\(EngineLibraryTheme.productName) menu")
+            ToolbarItem(placement: .principal) { libraryMenu }
         }
     }
 
+    private var libraryMenu: some View {
+        Menu {
+            Button("Settings", systemImage: "gearshape") { session.showSettings() }
+            if engine.isActive && !session.quitBlocksPresentation {
+                Button("Halo Menu", systemImage: "slider.horizontal.3") { session.showControls() }
+            }
+            if session.destination == .library { EngineLibraryArtworkActions() }
+            Button("Game Data", systemImage: "externaldrive") { activeSheet = .gameData }
+            Button("Controller", systemImage: "gamecontroller") { activeSheet = .controller }
+            Button("Cloud Saves", systemImage: "icloud") { activeSheet = .cloudSaves }
+            Button("Graphics Mods", systemImage: "sparkles") { activeSheet = .graphics }
+            Button("About \(EngineLibraryTheme.productName)", systemImage: "info.circle") { activeSheet = .about }
+        } label: {
+            EngineLibraryTitleLabel()
+                .contentShape([.interaction, .hoverEffect], Capsule())
+                .hoverEffect(.highlight)
+        }
+        .menuStyle(.button)
+        .buttonStyle(.plain)
+        .accessibilityLabel("\(EngineLibraryTheme.productName) menu")
+        .accessibilityIdentifier("launcher.menu")
+        .senseControllerTarget("library.settings")
+    }
+
     private var library: some View {
-        GeometryReader { proxy in
-            // One centered cover card, sized like the Dark Eco shelf: short
-            // windows scroll rather than shrinking touch targets.
-            let coverWidth = min(250, max(170, (proxy.size.height - 250) / 1.5), max(170, proxy.size.width - 64))
-            ScrollView {
-                VStack(spacing: 18) {
+        VStack(spacing: 0) {
+            // Keep the menu geometrically centered, independent of navigation
+            // toolbar placement and the card's width.
+            HStack {
+                Spacer(minLength: 0)
+                libraryMenu
+                Spacer(minLength: 0)
+            }
+            .padding(.vertical, 8)
+
+            GeometryReader { proxy in
+                // The card adapts to the remaining window height. There is no
+                // scrolling shelf or second Play control below it.
+                let noticeHeight: CGFloat = session.presentationMessage == nil ? 0 : 52
+                let coverWidth = max(64, min(250, proxy.size.width - 48,
+                                            (proxy.size.height - 106 - noticeHeight) / 1.5))
+                VStack(spacing: 12) {
                     Spacer(minLength: 0)
                     EngineLibraryGameCard(
                         coverWidth: coverWidth,
@@ -156,45 +165,18 @@ struct EngineContentView: View {
                         enabled: primaryEnabled,
                         action: activateCard
                     ) { readiness }
-                    HStack(spacing: 12) {
-                        Button(primaryTitle, systemImage: primarySymbol, action: activateCard)
-                            .buttonStyle(.borderedProminent)
-                            .controlSize(.large)
-                            .disabled(!primaryEnabled)
-                            .senseControllerTarget("library.play")
-                        Button("Settings", systemImage: "gearshape") { session.showSettings() }
-                            .buttonStyle(.bordered)
-                            .controlSize(.large)
-                            .senseControllerTarget("library.settings")
-                    }
-                    Picker("Play in", selection: $preferredPresentation) {
-                        ForEach(EngineDisplayMode.allCases) { mode in
-                            Label(mode.label, systemImage: mode.symbol).tag(mode.rawValue)
-                        }
-                    }
-                    .pickerStyle(.segmented)
-                    .frame(width: max(coverWidth + 12, 240))
-                    .disabled(session.quitBlocksPresentation)
-                    .accessibilityLabel("Choose Halo view")
-                    .senseControllerTarget("library.mode")
-                    controllerStatus
                     if let message = session.presentationMessage {
                         Text(message)
                             .font(.callout).foregroundStyle(.secondary)
                             .multilineTextAlignment(.center)
-                            .fixedSize(horizontal: false, vertical: true)
+                            .lineLimit(2)
                             .frame(maxWidth: 420)
+                            .padding(.horizontal, 16)
                     }
                     Spacer(minLength: 0)
                 }
-                .padding(.horizontal, 24)
-                .padding(.vertical, 20)
-                .frame(maxWidth: .infinity)
-                .frame(minHeight: proxy.size.height)
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
-            .scrollIndicators(.hidden)
-        }
-        .safeAreaInset(edge: .bottom, spacing: 0) {
             Text(haloBuildLabel)
                 .font(.caption2).monospacedDigit().foregroundStyle(.secondary)
                 .accessibilityIdentifier("launcher.buildNumber")
@@ -202,30 +184,6 @@ struct EngineContentView: View {
                 .padding(.vertical, 12)
         }
         .background { EngineLibraryBackground().ignoresSafeArea() }
-    }
-
-    /// Accurate reader state; Halo is played with a controller, not touch.
-    private var controllerStatus: some View {
-        let presence = controller.presence
-        return Button { activeSheet = .controller } label: {
-            HStack(spacing: 8) {
-                Image(systemName: presence.symbol)
-                    .foregroundStyle(presence.connected ? EngineLibraryTheme.success : EngineLibraryTheme.warning)
-                VStack(alignment: .leading, spacing: 1) {
-                    Text(presence == .checking ? "Checking controller…" : presence.title).font(.caption.weight(.semibold))
-                    if presence != .checking {
-                        Text(presence.summary).font(.caption2).foregroundStyle(.secondary).lineLimit(2)
-                    }
-                }
-            }
-            .padding(.horizontal, 14).padding(.vertical, 8)
-            .background(EngineLibraryTheme.surface.opacity(0.8), in: Capsule())
-            .contentShape([.interaction, .hoverEffect], Capsule())
-            .hoverEffect(.highlight)
-        }
-        .buttonStyle(.plain)
-        .accessibilityElement(children: .combine)
-        .accessibilityHint("Shows controller help")
     }
 
     private var controllerItems: [EngineControllerMenuItem] {
@@ -244,22 +202,15 @@ struct EngineContentView: View {
         return [
             .init(id: "library.play", title: primaryTitle, enabled: primaryEnabled, activate: activateCard),
             .init(id: "library.settings", title: "Settings", activate: { session.showSettings() }),
-            .init(id: "library.artwork", title: "Change Artwork", enabled: !artwork.isBusy, activate: { artwork.chooseArtwork() }),
-            .init(id: "library.mode", title: "Play in", value: displayMode.label,
-                  enabled: !session.quitBlocksPresentation,
-                  activate: cycleDisplayMode, adjust: { _ in cycleDisplayMode() })
+            .init(id: "library.artwork", title: "Change Artwork", enabled: !artwork.isBusy, activate: { artwork.chooseArtwork() })
         ]
     }
-    private func cycleDisplayMode() {
-        preferredPresentation = (displayMode == .window ? EngineDisplayMode.immersive : .window).rawValue
-    }
-
     private var busy: Bool {
-        session.presentationBusy || session.preparingPlay || session.cloudSaves.isBusy || session.quitBlocksPresentation
+        session.presentationBusy || session.preparingPlay || session.quitBlocksPresentation
     }
     private var engineEnded: Bool { engine.state == ENGINEVISION_FAILED || engine.state == ENGINEVISION_STOPPED }
-    /// Setup and game details stay reachable without a controller; only an
-    /// in-flight transition, save operation or Quit disables the action.
+    /// An automatic cloud check must not swallow Play. The session accepts
+    /// that intent, then finishes its save checks before starting the engine.
     private var primaryEnabled: Bool { !busy }
     private var primaryTitle: String {
         if session.quitBlocksPresentation { return session.quitPhase == .stopped ? "Halo Has Quit" : "Quitting…" }
@@ -268,16 +219,10 @@ struct EngineContentView: View {
         if engineEnded { return "Details" }
         return "Play"
     }
-    private var primarySymbol: String {
-        if session.quitBlocksPresentation { return "power" }
-        guard assets.phase == .ready else { return assets.phase == .missing ? "folder.badge.plus" : "externaldrive" }
-        return engineEnded ? "info.circle" : "play.fill"
-    }
-
     private var cardAccessibilityLabel: String {
         if let message = session.quitMessage { return "Halo: Combat Evolved, \(message)" }
-        if session.cloudSaves.isBusy { return "Halo: Combat Evolved, save operation in progress" }
         if session.preparingPlay { return "Halo: Combat Evolved, checking cloud saves before play" }
+        if session.cloudSaves.isBusy { return "Play Halo: Combat Evolved after save syncing finishes" }
         if session.presentationBusy { return "Halo: Combat Evolved, opening game" }
         switch assets.phase {
         case .checking: return "Halo: Combat Evolved, checking game data"
@@ -294,8 +239,11 @@ struct EngineContentView: View {
     }
 
     private func activateCard() {
+        EngineImmersiveTrace.shared.record(
+            "library.play.request assetsReady=\(assets.phase == .ready) cloudBusy=\(session.cloudSaves.isBusy) preparing=\(session.preparingPlay) presentationBusy=\(session.presentationBusy) quit=\(session.quitBlocksPresentation)",
+            state: UInt32(bitPattern: engine.state))
         guard !busy else { return }
-        if session.canPlay { session.play(in: displayMode) }
+        if assets.phase == .ready && (engine.canStart || engine.isActive) { session.play(in: displayMode) }
         else { activeSheet = .gameData }
     }
 
@@ -308,11 +256,11 @@ struct EngineContentView: View {
             } else {
                 HStack(spacing: 6) { ProgressView().controlSize(.mini); Text("Quitting Halo…") }
             }
-        } else if session.cloudSaves.isBusy {
-            Label("Working with saves…", systemImage: "icloud")
-                .foregroundStyle(EngineLibraryTheme.accent)
         } else if session.preparingPlay {
             HStack(spacing: 6) { ProgressView().controlSize(.mini); Text("Checking cloud saves…") }
+        } else if session.cloudSaves.isBusy {
+            Label("Play · syncing saves…", systemImage: "icloud")
+                .foregroundStyle(EngineLibraryTheme.accent)
         } else if session.presentationBusy {
             HStack(spacing: 6) { ProgressView().controlSize(.mini); Text("Opening Halo…") }
         } else {
@@ -339,7 +287,7 @@ struct EngineContentView: View {
                     Label("Stopped · close and reopen to play", systemImage: "exclamationmark.triangle")
                         .foregroundStyle(EngineLibraryTheme.warning)
                 } else {
-                    Label(engine.isActive ? "Running · Resume" : "Ready", systemImage: "play.fill")
+                    Label(engine.isActive ? "Resume" : "Play", systemImage: "play.fill")
                 }
             }
         }
@@ -371,41 +319,20 @@ struct EngineContentView: View {
     }
 }
 
-/// Dark Eco-style shimmering cue shown above the window when Halo has no
-/// usable controller. Informational only; it never takes input.
+/// One static controller notice above the window. Informational only;
+/// it never takes input or prevents the card from opening the game.
 struct EngineControllerStatusCue: View {
     let presence: EngineControllerPresence
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
-    @State private var highlightLocation: CGFloat = -1
 
     var body: some View {
-        VStack(spacing: 2) {
-            Text("No controller detected.")
-                .font(.headline.weight(.semibold))
-                .foregroundStyle(gradient)
-            Text(presence.summary)
-                .font(.caption).foregroundStyle(.secondary)
-        }
-        .padding(.horizontal, 18)
-        .padding(.vertical, 10)
-        .glassBackgroundEffect()
-        .allowsHitTesting(false)
-        .accessibilityElement(children: .combine)
-        .onAppear { animate() }
-        .onChange(of: reduceMotion) { _, _ in animate() }
-    }
-
-    private var gradient: LinearGradient {
-        let accent = EngineLibraryTheme.accent
-        guard !reduceMotion else { return LinearGradient(colors: [accent], startPoint: .leading, endPoint: .trailing) }
-        return LinearGradient(colors: [accent, accent, .white.opacity(0.85), EngineLibraryTheme.accentGlow, accent],
-                              startPoint: UnitPoint(x: highlightLocation - 1, y: 0.5),
-                              endPoint: UnitPoint(x: highlightLocation + 1, y: 0.5))
-    }
-    private func animate() {
-        highlightLocation = -1
-        guard !reduceMotion else { return }
-        withAnimation(.linear(duration: 1.6).repeatForever(autoreverses: false)) { highlightLocation = 1 }
+        Label("No controller detected", systemImage: presence.symbol)
+            .font(.callout.weight(.medium))
+            .foregroundStyle(.secondary)
+            .padding(.horizontal, 18)
+            .padding(.vertical, 10)
+            .glassBackgroundEffect()
+            .allowsHitTesting(false)
+            .accessibilityElement(children: .combine)
     }
 }
 

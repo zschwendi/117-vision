@@ -193,7 +193,11 @@ private struct EngineControllerTarget: ViewModifier {
         content
             .padding(3)
             .background(selected == id ? EngineLibraryTheme.accent.opacity(0.14) : .clear, in: RoundedRectangle(cornerRadius: 10))
-            .overlay { RoundedRectangle(cornerRadius: 10).stroke(selected == id ? EngineLibraryTheme.accent : .clear, lineWidth: 2) }
+            .overlay {
+                RoundedRectangle(cornerRadius: 10)
+                    .stroke(selected == id ? EngineLibraryTheme.accent : .clear, lineWidth: 2)
+                    .allowsHitTesting(false)
+            }
             .id(id)
     }
 }

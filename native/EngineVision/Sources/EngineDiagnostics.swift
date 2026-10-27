@@ -39,6 +39,7 @@ final class EngineDiagnostics {
     var preparationStatus = "Checking bundled game data"
     var preparationCopiedBytes: Int64 = 0
     var preparationTotalBytes: Int64 = 0
+    var launcherState: [String: Any] = [:]
     var immersiveStatus = "Opening immersive Halo"
     var immersiveActive = false
     var immersiveLayerState: UInt32?
@@ -374,6 +375,7 @@ final class EngineDiagnostics {
             "guestHeap": Self.heapStats(sample),
             "nativeGather": EngineGatherDiagnostics.fields(sample),
             "updatedAt": ISO8601DateFormatter().string(from: now), "state": state, "status": status,
+            "launcherState": launcherState,
             "bundleID": Bundle.main.bundleIdentifier ?? "unknown",
             "build": Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? "unknown",
             "buildID": Bundle.main.infoDictionary?["HaloBuildID"] as? String ?? "unknown",

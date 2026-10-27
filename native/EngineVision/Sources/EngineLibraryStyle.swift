@@ -16,23 +16,12 @@ enum EngineLibraryTheme {
     static let warning = Color(red: 1.0, green: 0.74, blue: 0.38)
 }
 
-/// Launcher-only atmosphere: a deep blue-green sky, slow stars and an
+/// Launcher-only atmosphere: a static deep blue-green sky, stars and an
 /// original geometric ring band. Procedural; no game artwork is used.
 struct EngineLibraryBackground: View {
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
-    @Environment(\.scenePhase) private var scenePhase
-    @State private var startedAt = Date.now
-
     var body: some View {
-        GeometryReader { proxy in
-            TimelineView(.animation(minimumInterval: 1.0 / 20.0,
-                                    paused: reduceMotion || scenePhase != .active)) { timeline in
-                let time = reduceMotion ? 0 : max(0, timeline.date.timeIntervalSince(startedAt))
-                Canvas { context, size in
-                    Self.draw(in: &context, size: size, time: time)
-                }
-                .frame(width: proxy.size.width, height: proxy.size.height)
-            }
+        Canvas { context, size in
+            Self.draw(in: &context, size: size)
         }
         .background(EngineLibraryTheme.background)
         .clipped()
@@ -40,34 +29,33 @@ struct EngineLibraryBackground: View {
         .accessibilityHidden(true)
     }
 
-    private static func draw(in context: inout GraphicsContext, size: CGSize, time: Double) {
+    private static func draw(in context: inout GraphicsContext, size: CGSize) {
         let extent = max(size.width, size.height, 1)
         let full = CGRect(origin: .zero, size: size)
         context.fill(Path(full), with: .color(EngineLibraryTheme.background))
 
-        // Two slowly drifting nebula lobes: Halo blue above, ring-world green below.
-        let drift = CGFloat(sin(time * 0.045)) * 0.03
+        // Two soft color fields behind the shelf.
         context.fill(Path(full), with: .radialGradient(
             Gradient(colors: [Color(red: 0.05, green: 0.20, blue: 0.30).opacity(0.85), .clear]),
-            center: CGPoint(x: size.width * (0.30 + drift), y: size.height * 0.28),
+            center: CGPoint(x: size.width * 0.30, y: size.height * 0.28),
             startRadius: 0, endRadius: extent * 0.62))
         context.fill(Path(full), with: .radialGradient(
             Gradient(colors: [Color(red: 0.04, green: 0.24, blue: 0.17).opacity(0.70), .clear]),
-            center: CGPoint(x: size.width * (0.74 - drift), y: size.height * 0.80),
+            center: CGPoint(x: size.width * 0.74, y: size.height * 0.80),
             startRadius: 0, endRadius: extent * 0.55))
 
-        // Deterministic star field with a gentle twinkle.
+        // A deterministic, still star field.
         for index in 0..<96 {
             let x = CGFloat((index * 137 + 29) % 997) / 997 * size.width
             let y = CGFloat((index * 251 + 61) % 991) / 991 * size.height
             let radius: CGFloat = index.isMultiple(of: 9) ? 1.2 : 0.6
-            let opacity = 0.10 + 0.16 * (1 + sin(time * 0.22 + Double(index) * 1.7)) / 2
+            let opacity = 0.10 + 0.16 * (1 + sin(Double(index) * 1.7)) / 2
             context.fill(Path(ellipseIn: CGRect(x: x - radius, y: y - radius, width: radius * 2, height: radius * 2)),
                          with: .color(.white.opacity(opacity)))
         }
 
         // An original ring: a tilted, foreshortened band seen edge-on, with a
-        // lit inner surface and a slow highlight travelling along its arc.
+        // lit inner surface. It does not animate while choosing a game.
         let center = CGPoint(x: size.width * 0.5, y: size.height * 0.56)
         let ringWidth = extent * 1.18
         let ringHeight = ringWidth * 0.17
@@ -75,10 +63,10 @@ struct EngineLibraryBackground: View {
         band.translateBy(x: center.x, y: center.y)
         band.rotate(by: .degrees(-9))
         let outer = CGRect(x: -ringWidth / 2, y: -ringHeight / 2, width: ringWidth, height: ringHeight)
-        // Layered wide strokes give a soft glow without a per-frame blur pass.
+        // Layered wide strokes give a soft glow.
         band.stroke(Path(ellipseIn: outer), with: .color(EngineLibraryTheme.accentGlow.opacity(0.035)), lineWidth: 30)
         band.stroke(Path(ellipseIn: outer), with: .color(EngineLibraryTheme.accent.opacity(0.06)), lineWidth: 12)
-        let phase = CGFloat((time * 0.035).truncatingRemainder(dividingBy: 1))
+        let phase: CGFloat = 0.38
         band.stroke(Path(ellipseIn: outer), with: .linearGradient(
             Gradient(stops: [.init(color: .clear, location: 0),
                              .init(color: EngineLibraryTheme.accent.opacity(0.18), location: max(0, phase - 0.25)),
@@ -97,34 +85,18 @@ struct EngineLibraryBackground: View {
     }
 }
 
-/// Brand capsule used as the launcher's top menu label.
+/// Plain, static label for the centered launcher menu.
 struct EngineLibraryTitleLabel: View {
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
-    private let shimmerDuration: TimeInterval = 2.8
-
     var body: some View {
-        TimelineView(.animation(minimumInterval: 1.0 / 30.0, paused: reduceMotion)) { timeline in
+        HStack(spacing: 7) {
             Text(EngineLibraryTheme.productName)
+                .font(.headline.weight(.semibold))
+            Image(systemName: "chevron.down")
                 .font(.caption.weight(.semibold))
-                .foregroundStyle(foreground(at: timeline.date))
-                .padding(.horizontal, 14)
-                .padding(.vertical, 7)
-                .background(EngineLibraryTheme.surface.opacity(0.92), in: Capsule())
-                .overlay { Capsule().strokeBorder(EngineLibraryTheme.accent.opacity(0.28), lineWidth: 1) }
-                .shadow(color: EngineLibraryTheme.accent.opacity(0.30), radius: 6)
         }
-    }
-
-    private func foreground(at date: Date) -> LinearGradient {
-        guard !reduceMotion else {
-            return LinearGradient(colors: [EngineLibraryTheme.accent], startPoint: .leading, endPoint: .trailing)
-        }
-        let wrapped = date.timeIntervalSinceReferenceDate.truncatingRemainder(dividingBy: shimmerDuration)
-        let location = CGFloat(wrapped / shimmerDuration * 4 - 2)
-        return LinearGradient(colors: [EngineLibraryTheme.accent, EngineLibraryTheme.accent, .white.opacity(0.88),
-                                       EngineLibraryTheme.accentGlow, EngineLibraryTheme.accent],
-                              startPoint: UnitPoint(x: location - 1, y: 0.5),
-                              endPoint: UnitPoint(x: location + 1, y: 0.5))
+        .foregroundStyle(.primary)
+        .padding(.horizontal, 16)
+        .frame(minHeight: 44)
     }
 }
 
@@ -153,6 +125,7 @@ struct EngineLibraryCover: View {
             .overlay {
                 RoundedRectangle(cornerRadius: 12, style: .continuous)
                     .strokeBorder(EngineLibraryTheme.accent.opacity(0.5), lineWidth: 1)
+                    .allowsHitTesting(false)
             }
         }
         .accessibilityHidden(true)
@@ -168,7 +141,6 @@ struct EngineLibraryGameCard<Status: View>: View {
     let action: () -> Void
     @ViewBuilder let status: () -> Status
     @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
         // The artwork menu is a sibling of the launch target, so opening it
@@ -182,25 +154,19 @@ struct EngineLibraryGameCard<Status: View>: View {
         .contextMenu { EngineLibraryArtworkActions() }
     }
 
-    @ViewBuilder
     private var launchSurface: some View {
-        #if os(visionOS)
-        surface
-            .contentShape([.interaction, .hoverEffect], RoundedRectangle(cornerRadius: 16, style: .continuous))
-            .onTapGesture { if enabled { action() } }
-            .accessibilityElement(children: .ignore)
-            .accessibilityLabel(accessibilityLabel)
-            .accessibilityAddTraits(.isButton)
-            .accessibilityAction { if enabled { action() } }
-            .disabled(!enabled)
-            .hoverEffect { effect, active, _ in
-                effect.scaleEffect(active && enabled && !reduceMotion ? 1.025 : 1)
-            }
-        #else
-        Button(action: action) { surface }
+        Button(action: action) {
+            surface
+                .contentShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+        }
             .buttonStyle(.plain)
             .disabled(!enabled)
             .accessibilityLabel(accessibilityLabel)
+            .accessibilityIdentifier("launcher.play")
+        #if os(visionOS)
+            .contentShape([.interaction, .hoverEffect], RoundedRectangle(cornerRadius: 16, style: .continuous))
+            .hoverEffect(.highlight)
+            .senseControllerTarget("library.play")
         #endif
     }
 
@@ -228,6 +194,7 @@ struct EngineLibraryGameCard<Status: View>: View {
         .overlay {
             RoundedRectangle(cornerRadius: 16, style: .continuous)
                 .strokeBorder(EngineLibraryTheme.accent.opacity(0.42), lineWidth: 1)
+                    .allowsHitTesting(false)
         }
         .shadow(color: .black.opacity(0.35), radius: 24, y: 14)
     }

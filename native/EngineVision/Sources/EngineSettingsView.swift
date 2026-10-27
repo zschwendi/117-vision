@@ -8,6 +8,10 @@ struct EngineSettingsView: View {
     @State private var path: [EngineSettingsPage] = []
     @AppStorage(EngineLaunchPreferences.visionResolutionKey) private var resolution = EngineLaunchPreferences.visionHighestResolution
     @AppStorage(EngineLaunchPreferences.visionFrameRateKey) private var frameRate = EngineVisionFrameRate.maximum.rawValue
+    @AppStorage("HaloPreferredPresentation") private var preferredPresentation = EngineDisplayMode.immersive.rawValue
+
+    private var displayMode: EngineDisplayMode { EngineDisplayMode(rawValue: preferredPresentation) ?? .immersive }
+    private var presentationLocked: Bool { session.presentationBusy || session.preparingPlay || session.quitBlocksPresentation }
 
     var body: some View {
         NavigationStack(path: $path) {
@@ -20,6 +24,13 @@ struct EngineSettingsView: View {
                     }.padding(.vertical, 8)
                 }
                 Section("Play") {
+                    Picker("Play in", selection: Binding(get: { displayMode }, set: chooseDisplayMode)) {
+                        ForEach(EngineDisplayMode.allCases) { mode in
+                            Label(mode.label, systemImage: mode.symbol).tag(mode)
+                        }
+                    }
+                    .disabled(presentationLocked)
+                    .senseControllerTarget("settings.mode")
                     NavigationLink(value: EngineSettingsPage.sense) { Label("Sense Controls & Turning", systemImage: "gamecontroller") }
                         .senseControllerTarget("settings.sense")
                     NavigationLink(value: EngineSettingsPage.live) { Label("Depth, View & Sound", systemImage: "slider.horizontal.3") }
@@ -88,6 +99,8 @@ struct EngineSettingsView: View {
     private var controllerItems: [EngineControllerMenuItem] {
         if showingReset { return [.init(id: "settings.cancelReset", title: "Cancel reset", activate: { showingReset = false })] }
         return [
+            .init(id: "settings.mode", title: "Play in", value: displayMode.label, enabled: !presentationLocked,
+                  activate: cycleDisplayMode, adjust: { _ in cycleDisplayMode() }),
             route("sense", "Sense Controls & Turning", .sense), route("live", "Depth, View & Sound", .live),
             route("orientation", "Orientation & Recenter", .orientation),
             route("controller", "Controller Help", .controller),
@@ -101,6 +114,18 @@ struct EngineSettingsView: View {
             route("about", "About \(EngineLibraryTheme.productName)", .about),
             .init(id: "settings.done", title: "Done", activate: session.hideSettings)
         ]
+    }
+    private func chooseDisplayMode(_ mode: EngineDisplayMode) {
+        guard !presentationLocked else { return }
+        preferredPresentation = mode.rawValue
+        // Choosing a preference in the launcher must not start the game. An
+        // active game can change presentation from this same Settings row.
+        if session.engine.isActive && session.destination != .library {
+            session.play(in: mode)
+        }
+    }
+    private func cycleDisplayMode() {
+        chooseDisplayMode(displayMode == .window ? .immersive : .window)
     }
     private func route(_ id: String, _ title: String, _ page: EngineSettingsPage) -> EngineControllerMenuItem {
         .init(id: "settings." + id, title: title, activate: { path.append(page) })

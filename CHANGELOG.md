@@ -1,5 +1,15 @@
 # Changelog
 
+## One Vision Pro session — 1.0.29 / build 129
+
+- Starts Halo in the game window, with compact Expand and Settings buttons above it.
+- Expands the same running engine into immersive view; closing immersive returns to that game window without restarting Halo.
+- Waits for the first completed immersive frame before hiding the window and for the returning window to attach before dismissing immersive. Interrupted returns remain pending until the app is available again.
+- Presents live GPU gameplay and its HUD in the window instead of potentially retaining the last CPU menu frame. Leaving immersive clears the old headset pose.
+- Retains the existing save, signing and app identities. This is a Vision-only package; the mobile touch package remains build 128.
+
+See [validation](docs/VALIDATION.md) for package and device acceptance.
+
 ## Mobile touch controls — 1.0.28 / build 128
 
 - Adds an on-screen movement stick, drag aiming, and buttons for fire, zoom, jump, crouch, reload, use/pickup, weapon switching, grenades, grenade selection, melee, flashlight and pause.

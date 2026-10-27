@@ -37,8 +37,9 @@ def extract(source: str) -> tuple[str, str, str]:
     if not draw or not shader or not clear:
         raise ValueError("Production draw/shader/clear shape changed; review harness extraction.")
     body = draw.group(1)
-    if body.count("command.present(drawable)") != 1:
-        raise ValueError("Expected exactly one production drawable presentation.")
+    presentations = body.count("command.present(drawable)")
+    if presentations != 1 and not (presentations == 2 and "#if os(visionOS)" in body):
+        raise ValueError("Expected one production drawable presentation per platform branch.")
     # This is the sole transformation of the production draw body. Keep its
     # normal command.commit(), then await completion outside the extracted body.
     body = body.replace("command.present(drawable)", "view.submitted = command")

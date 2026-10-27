@@ -46,10 +46,19 @@ struct EngineFrameView: UIViewRepresentable {
         private var queue: MTLCommandQueue?
         private var pipeline: MTLRenderPipelineState?
         private var frame: EngineFrameTexture?
+#if os(visionOS)
+        private var panorama: EnginePanoramaTexture?
+        private var windowComposition: EngineWindowComposition?
+#endif
 
         func configure(_ view: MTKView) {
             guard let device = view.device else { return }
             queue = device.makeCommandQueue(); frame = EngineFrameTexture(device: device)
+#if os(visionOS)
+            panorama = EnginePanoramaTexture(device: device)
+            do { windowComposition = try EngineWindowComposition(device: device, format: view.colorPixelFormat) }
+            catch { NSLog("117 window world shader unavailable: %@", error.localizedDescription) }
+#endif
             view.delegate = self
             do {
                 let library = try device.makeLibrary(source: Self.shader, options: nil)
@@ -65,6 +74,40 @@ struct EngineFrameView: UIViewRepresentable {
         }
         func mtkView(_ view: MTKView, drawableSizeWillChange size: CGSize) {}
         func draw(in view: MTKView) {
+#if os(visionOS)
+            guard let pass = view.currentRenderPassDescriptor, let drawable = view.currentDrawable,
+                  let queue, let command = queue.makeCommandBuffer() else { return }
+            pass.colorAttachments[0].loadAction = .clear
+            pass.colorAttachments[0].storeAction = .store
+            guard let encoder = command.makeRenderCommandEncoder(descriptor: pass) else { return }
+            // The Vision engine publishes world frames directly into the GPU
+            // panorama pool. Its CPU bytes may still be an earlier title menu.
+            // The window and immersive renderer consume the same live producer;
+            // this command's completion returns its existing snapshot lease.
+            if let panorama {
+                let snapshot = panorama.refresh(leasedTo: command)
+                if let snapshot, !panorama.allowsFlatFallback {
+                    let center = Int(HALO_PANORAMA_CENTRE_LEFT)
+                    windowComposition?.encode(encoder, world: snapshot.view(eye: 0, sector: center),
+                                              hud: snapshot.hud, viewport: snapshot.projections.viewport(center),
+                                              drawableSize: SIMD2(Float(view.drawableSize.width), Float(view.drawableSize.height)))
+                } else if panorama.allowsFlatFallback {
+                    // Menus and loading screens have genuine flat bytes. Match
+                    // the publication sequence so a world/flat race cannot turn
+                    // an old CPU picture into the current gameplay frame.
+                    _ = frame?.refresh(expectedSequence: panorama.latestFlatSequence)
+                    if let pipeline, let frame, frame.sequence == panorama.latestFlatSequence,
+                       let texture = frame.view {
+                        encoder.setRenderPipelineState(pipeline); encoder.setFragmentTexture(texture, index: 0)
+                        var aspect = SIMD2<Float>(Float(texture.width) / Float(texture.height), Float(view.drawableSize.width / max(1, view.drawableSize.height)))
+                        encoder.setVertexBytes(&aspect, length: MemoryLayout<SIMD2<Float>>.stride, index: 0)
+                        encoder.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: 3)
+                    }
+                }
+            }
+            encoder.endEncoding()
+            command.present(drawable); command.commit()
+#else
 #if os(iOS)
             (view as? EngineFrameMTKView)?.drawn()
 #endif
@@ -85,6 +128,7 @@ struct EngineFrameView: UIViewRepresentable {
             }
             encoder.endEncoding()
             command.present(drawable); command.commit()
+#endif
         }
 
         private static let shader = """

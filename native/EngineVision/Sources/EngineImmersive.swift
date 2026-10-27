@@ -153,6 +153,16 @@ final class EngineImmersiveControl: @unchecked Sendable {
         // Fatal renderer errors also release pending menu input. Repeated
         // stops from an old renderer must not clear its replacement's taps.
         enginevision_pointer(-1, -1, 0, -1)
+        halo_settings_set_head(0, 0)
+        halo_settings_set_head_roll(0)
+    }
+    /// Serialize pose publication with stop: an old render thread must never
+    /// restore its last head pose after the window or a new scene takes over.
+    func publishHead(yaw: Float, pitch: Float, roll: Float) {
+        lock.lock(); defer { lock.unlock() }
+        guard !stopped else { return }
+        halo_settings_set_head(yaw, pitch)
+        halo_settings_set_head_roll(roll)
     }
     func pointer(_ u: Float, _ v: Float, _ onPanel: Int32, _ action: Int32) {
         lock.lock(); defer { lock.unlock() }
@@ -306,6 +316,7 @@ final class EngineImmersiveSession: ObservableObject {
                 EngineImmersiveTrace.shared.record("renderer.failed: \(error.localizedDescription)", id: control.lifecycleID, state: layer.state.rawValue)
                 NSLog("[immersive] renderer failed: %@", error.localizedDescription)
                 status = "Immersive renderer failed: \(error.localizedDescription)"
+                control.stop()
                 closeGeneration = generation
                 active = false; opening = false; self.control = nil; closeRequest += 1
             }
@@ -666,7 +677,7 @@ final class EngineImmersiveRenderer: @unchecked Sendable {
     func run() {
         EngineImmersiveTrace.shared.record("renderLoop.enter", id: control.lifecycleID, state: layer.state.rawValue)
         var previousState: UInt32?
-        defer { stopTracking() }
+        defer { control.stop(); stopTracking() }
         while !control.read().stopped {
             let state = layer.state
             if previousState != state.rawValue {
@@ -1037,14 +1048,13 @@ final class EngineImmersiveRenderer: @unchecked Sendable {
             neutralFromHead = panoramaFromNeutral * neutralFromHead
             let panoramaFromOrigin = panoramaFromNeutral * pose.neutralFromOrigin
             let gaze = -simd_normalize(simd_make_float3(neutralFromHead.columns.2))
-            if gaze.x.isFinite && gaze.y.isFinite && gaze.z.isFinite {
-                halo_settings_set_head(atan2(gaze.x, -gaze.z), asin(max(-1, min(1, gaze.y))))
-            }
             // The head's own right axis is the line between the eyes; how far
             // it rises out of level is the roll the centre passes render with.
             let headRight = simd_normalize(simd_make_float3(neutralFromHead.columns.0))
-            if headRight.y.isFinite {
-                halo_settings_set_head_roll(asin(max(-1, min(1, headRight.y))))
+            if gaze.x.isFinite && gaze.y.isFinite && gaze.z.isFinite && headRight.y.isFinite {
+                control.publishHead(yaw: atan2(gaze.x, -gaze.z),
+                                    pitch: asin(max(-1, min(1, gaze.y))),
+                                    roll: asin(max(-1, min(1, headRight.y))))
             }
             registerTrackingAreas(drawable: drawable, menuActive: menuActive, panorama: panoramaActive && panoramaSnapshot != nil)
             if !didUpdateMenuInput {

@@ -4,7 +4,7 @@
 
 | Area | Implementation | Acceptance boundary |
 | --- | --- | --- |
-| Vision Pro | Native Metal renderer, window and immersive presentation | Build 127 was installed; latest changes need a physical gameplay test |
+| Vision Pro | Native Metal renderer; window-first play and immersive expansion of the same running session | Build 129 source/SDK checks pass; latest verified installation remains 127; physical transition testing is pending |
 | PSVR2 Sense | Tracked aiming, support hand, gestures, turning and optional dual wielding | Test each action and weapon on the headset |
 | Grenades | L1 hold/release with hand direction and Halo-scaled strength; 121 adds held model | Original throw animation delay remains |
 | Animation takeover | Melee; 121 adds reload and equip/put-away | Physical feel requires testing |

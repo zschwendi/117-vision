@@ -1,5 +1,13 @@
 # 117 validation
 
+## Current Vision source candidate: build 129
+
+Version 1.0.29 makes the main Vision Pro window singular and starts gameplay there. Expand and Settings are compact top controls. Window and immersive presentation share the app-owned engine; closing immersive returns to the existing game window. Scene generations reject stale/duplicate close callbacks, frame completion gates hiding the window, and a real UIKit foreground attachment gates immersive dismissal. Interrupted returns remain pending for foreground/attachment. Head pose publication and renderer shutdown share a lock so an old renderer cannot restore a stale pose over the returning window or a new scene.
+
+The window now consumes the live center GPU view and HUD from the existing panorama publication. Flat menus use sequence-matched CPU frames. Focused Metal tests exercise actual production draw code for frame advancement, stale CPU rejection, HUD blending, cinematic viewport, flat/world transitions and lease release. All ten GPU cases and five window-clear cases pass on the Mac GPU; this is not a headset test. Independent source review and complete Vision/mobile device-SDK Swift typechecks pass. The production callback lifecycle fixture passes 266 assertions normally and with AddressSanitizer, including early system close, duplicate/stale callbacks, replacement orderings, completed-frame gating and queued return/quit handling.
+
+The fresh package build is blocked by local disk space below its existing 6 GiB guard. No build 129 executable, signing, installation or physical acceptance is claimed. The production inputs are frozen for the next build attempt; the last verified Vision installation remains build 127. The mobile touch package remains build 128.
+
 ## Current mobile preview: build 128
 
 Version 1.0.28 adds automatic iPhone/iPad touch gameplay controls when neither a supported controller nor a physical keyboard is connected. Movement, aiming and held fire can run together. Named actions resolve the current keyboard/mouse-button bindings without changing profiles; unsupported or unbound actions do not silently trigger another control. Menus, app panels, scene loss and hardware changes release held touch input.

@@ -37,3 +37,12 @@ jobs:
         run: >-
           python3 -B tools/run_source_checks.py --sanitize
           --only device-input,device_touch_controls,device_messages,pad-input-policy,pad-input-session,pad-touch-controls,guest_page_try,d3d9_transaction,d3d9_admission,mobile-graphics-runtime,mobile-graphics-metal,launch-preferences,input-prompt-device,controller-prompt-names,library-artwork
+      # Actual app callback bodies with deterministic scene/renderer fixtures;
+      # actual window shaders on Metal when the runner has a GPU. A missing
+      # Metal device explicitly SKIPs GPU checks rather than counting a pass.
+      - name: Window and immersive session transitions
+        run: >-
+          python3 -B tools/run_source_checks.py
+          --only scene-transitions,window-gpu-frame,window-frame-clear
+      - name: Scene transition sanitizer
+        run: python3 -B tools/run_source_checks.py --sanitize --only scene-transitions

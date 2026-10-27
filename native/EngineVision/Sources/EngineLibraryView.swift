@@ -14,13 +14,10 @@ struct EngineContentView: View {
     @ObservedObject var immersive: EngineImmersiveSession
     @ObservedObject private var controller = EngineAppControllerNavigation.shared
     @ObservedObject private var artwork = EngineLibraryArtworkStore.shared
-    @AppStorage("HaloPreferredPresentation") private var preferredPresentation = EngineDisplayMode.immersive.rawValue
     @State private var showingImporter = false
     @State private var importAlert: String?
     @State private var activeSheet: EngineLibrarySheet?
     @State private var importAfterSheetDismissal = false
-
-    private var displayMode: EngineDisplayMode { EngineDisplayMode(rawValue: preferredPresentation) ?? .immersive }
 
     var body: some View {
         NavigationStack {
@@ -28,9 +25,7 @@ struct EngineContentView: View {
                 if session.destination == .window { gameWindow }
                 else { library }
             }
-            .navigationTitle(session.destination == .window ? "Halo: Combat Evolved" : "")
-            .toolbar(session.destination == .library ? .hidden : .visible, for: .navigationBar)
-            .toolbar { toolbar }
+            .toolbar(.hidden, for: .navigationBar)
         }
         .libraryArtworkImporter()
         .tint(EngineLibraryTheme.accent)
@@ -40,8 +35,17 @@ struct EngineContentView: View {
                   attachmentAnchor: .scene(.top), contentAlignment: .bottom) {
             HStack(spacing: 12) {
                 if controllerMissing { EngineControllerStatusCue(presence: controller.presence) }
-                if windowAffordanceVisible {
-                    EngineSettingsAffordanceButton { session.showControls() }
+                if windowControlsVisible {
+                    windowControl("Expand", symbol: "arrow.up.left.and.arrow.down.right") {
+                        session.play(in: .immersive)
+                    }
+                    .accessibilityHint("Continue this game in immersive view")
+                    .accessibilityIdentifier("game.expand")
+                    .disabled(busy || !session.canPlay)
+                    windowControl("Settings", symbol: "gearshape") { session.showControls() }
+                        .accessibilityHint("Open the game menu")
+                        .accessibilityIdentifier("game.settings")
+                        .disabled(busy)
                 }
             }
             .padding(.bottom, 12)
@@ -89,7 +93,7 @@ struct EngineContentView: View {
                                        else if artwork.isImporterPresented { artwork.isImporterPresented = false }
                                        else if importAlert != nil { importAlert = nil }
                                        else if showingImporter { showingImporter = false }
-                                       else if engine.isActive && session.canPlay { session.play(in: displayMode) }
+                                       else if engine.isActive && session.canPlay { session.play(in: .window) }
                                    })
         .onAppear { EngineImmersiveTrace.shared.record("library.appear") }
         .onDisappear { EngineImmersiveTrace.shared.record("library.disappear") }
@@ -99,21 +103,21 @@ struct EngineContentView: View {
     private var controllerMissing: Bool {
         controller.presence != .checking && !controller.presence.connected
     }
-    private var windowAffordanceVisible: Bool {
-        session.destination == .window && session.pauseAffordanceVisible
+    private var windowControlsVisible: Bool {
+        session.destination == .window && engine.isActive
     }
-    private var topOrnamentVisible: Bool { controllerMissing || windowAffordanceVisible }
+    private var topOrnamentVisible: Bool { controllerMissing || windowControlsVisible }
 
-    @ToolbarContentBuilder
-    private var toolbar: some ToolbarContent {
-        if session.destination == .window {
-            ToolbarItem(placement: .topBarLeading) {
-                Button("Library", systemImage: "square.grid.2x2") { session.request(.library) }
-                    .disabled(session.presentationBusy || session.quitBlocksPresentation)
-                    .help("Return to the Library. Halo keeps running.")
-            }
-            ToolbarItem(placement: .principal) { libraryMenu }
+    private func windowControl(_ title: String, symbol: String, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            Image(systemName: symbol)
+                .font(.system(size: 17, weight: .semibold))
+                .frame(width: 44, height: 44)
+                .contentShape(Circle())
         }
+        .buttonStyle(.plain)
+        .glassBackgroundEffect(in: Circle())
+        .accessibilityLabel(title)
     }
 
     private var libraryMenu: some View {
@@ -235,7 +239,7 @@ struct EngineContentView: View {
         }
         if !engine.canStart && !engine.isActive { return "Halo: Combat Evolved, stopped, open game details" }
         if engine.isActive && engine.frameSequence == 0 { return "Halo: Combat Evolved, starting game" }
-        return "\(engine.isActive ? "Resume" : "Play") Halo: Combat Evolved, \(displayMode.label)"
+        return "\(engine.isActive ? "Resume" : "Play") Halo: Combat Evolved in a window"
     }
 
     private func activateCard() {
@@ -243,7 +247,7 @@ struct EngineContentView: View {
             "library.play.request assetsReady=\(assets.phase == .ready) cloudBusy=\(session.cloudSaves.isBusy) preparing=\(session.preparingPlay) presentationBusy=\(session.presentationBusy) quit=\(session.quitBlocksPresentation)",
             state: UInt32(bitPattern: engine.state))
         guard !busy else { return }
-        if assets.phase == .ready && (engine.canStart || engine.isActive) { session.play(in: displayMode) }
+        if assets.phase == .ready && (engine.canStart || engine.isActive) { session.play(in: .window) }
         else { activeSheet = .gameData }
     }
 
@@ -310,6 +314,17 @@ struct EngineContentView: View {
                 }
                 .padding(30)
                 .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 20))
+            }
+        }
+        .overlay(alignment: .top) {
+            if let message = session.presentationMessage {
+                Text(message)
+                    .font(.callout)
+                    .multilineTextAlignment(.center)
+                    .frame(maxWidth: 500)
+                    .padding(12)
+                    .glassBackgroundEffect()
+                    .padding(16)
             }
         }
         .background(.black)

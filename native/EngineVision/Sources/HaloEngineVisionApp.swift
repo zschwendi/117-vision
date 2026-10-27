@@ -2,6 +2,7 @@ import SwiftUI
 import CompositorServices
 import GameController
 import Combine
+import UIKit
 
 let haloBuildLabel = "Build \(Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String ?? "—")"
 
@@ -9,6 +10,10 @@ let haloBuildLabel = "Build \(Bundle.main.object(forInfoDictionaryKey: "CFBundle
 struct HaloEngineVisionApp: App {
     @StateObject private var session = EngineAppSession()
     @Environment(\.scenePhase) private var scenePhase
+    @Environment(\.openWindow) private var openWindow
+    @Environment(\.dismissWindow) private var dismissWindow
+    @Environment(\.openImmersiveSpace) private var openImmersiveSpace
+    @Environment(\.dismissImmersiveSpace) private var dismissImmersiveSpace
 
     /// Before SwiftUI creates the session, whose settings models read the
     /// saved presentation, and long before the engine reads launch graphics.
@@ -18,14 +23,16 @@ struct HaloEngineVisionApp: App {
     }
 
     var body: some Scene {
-        WindowGroup(EngineLibraryTheme.productName, id: EngineAppSession.libraryWindowID) {
+        Window(EngineLibraryTheme.productName, id: EngineAppSession.libraryWindowID) {
             EngineContentView(session: session, assets: session.assets, engine: session.engine, immersive: session.immersive)
-                .modifier(EngineSceneActions(session: session))
+                .background(EngineMainWindowAttachment(session: session).allowsHitTesting(false))
+                .onAppear { bindSceneActions() }
         }
         .defaultSize(width: 980, height: 700)
         .defaultLaunchBehavior(.presented)
         .restorationBehavior(.disabled)
         .onChange(of: scenePhase, initial: true) { _, phase in
+            bindSceneActions()
             EngineAppControllerNavigation.shared.setApplicationActive(phase == .active)
             EngineImmersiveTrace.shared.record("app.scenePhase: \(phase)")
             session.engine.diagnostics.flush(reason: "scenePhase: \(phase)", wait: phase == .background)
@@ -33,7 +40,7 @@ struct HaloEngineVisionApp: App {
         }
 
         ImmersiveSpace(id: EngineImmersiveSession.spaceID) {
-            CompositorLayer(configuration: EngineImmersiveLayerConfiguration()) { layer in session.startImmersive(layer) }
+            EngineImmersiveScene(session: session, generation: session.immersiveSceneGeneration)
         }
         .immersionStyle(selection: .constant(.full), in: .full)
         .upperLimbVisibility(session.senseSettings.showHandsAndControllers ? .visible : .hidden)
@@ -43,7 +50,7 @@ struct HaloEngineVisionApp: App {
         // the launcher menu, or the deliberate Sense Create + Options chord.
         Window("Halo Menu", id: EngineAppSession.controlsWindowID) {
             EngineGameMenuView(session: session, engine: session.engine, immersive: session.immersive)
-                .modifier(EngineSceneActions(session: session))
+
         }
         .defaultSize(width: 440, height: 660)
         .windowResizability(.contentSize)
@@ -54,7 +61,7 @@ struct HaloEngineVisionApp: App {
         // Tiny immersive-only affordance, shown while Halo's own menu is up.
         Window("Halo Settings Button", id: EngineAppSession.pauseWindowID) {
             EnginePauseAffordancePanel(session: session)
-                .modifier(EngineSceneActions(session: session))
+
         }
         .windowStyle(.plain)
         .windowResizability(.contentSize)
@@ -65,11 +72,35 @@ struct HaloEngineVisionApp: App {
         Window("Halo Settings", id: EngineAppSession.settingsWindowID) {
             EngineSettingsView(session: session)
                 .handlesGameControllerEvents(matching: .gamepad)
-                .modifier(EngineSceneActions(session: session))
+
         }
         .defaultSize(width: 620, height: 820)
         .defaultLaunchBehavior(.suppressed)
         .restorationBehavior(.disabled)
+    }
+
+    /// App-owned actions stay valid after either presentation view disappears.
+    private func bindSceneActions() {
+        let openWindow = openWindow, dismissWindow = dismissWindow
+        let openSpace = openImmersiveSpace, dismissSpace = dismissImmersiveSpace
+        session.bindSceneActions(.init(
+            openSpace: { await openSpace(id: EngineImmersiveSession.spaceID) },
+            dismissSpace: { await dismissSpace() },
+            openWindow: { openWindow(id: $0) },
+            dismissWindow: { dismissWindow(id: $0) }))
+    }
+}
+
+/// Capture an expansion's identity in the scene, rather than reading a newer
+/// session's identity when a delayed onDisappear callback arrives.
+private struct EngineImmersiveScene: CompositorContent {
+    let session: EngineAppSession
+    let generation: UInt64
+    var body: some CompositorContent {
+        CompositorLayer(configuration: EngineImmersiveLayerConfiguration()) { layer in
+            session.startImmersive(layer, generation: generation)
+        }
+        .onDisappear { session.immersiveSceneDisappeared(generation: generation) }
     }
 }
 
@@ -80,11 +111,8 @@ enum EngineDisplayMode: String, CaseIterable, Identifiable {
     var symbol: String { self == .window ? "macwindow" : "visionpro" }
 }
 
-enum EnginePresentationDestination { case library, window, immersive }
-
-/// Actions are installed by a visible scene and retained by the app session.
-/// Async presentation work survives dismissal of the launcher and always
-/// passes through one serialized owner.
+/// One runtime and one serialized presentation owner survive both views.
+/// Window/immersive changes never start or stop a second copy of Halo.
 @MainActor
 final class EngineAppSession: ObservableObject {
     static let libraryWindowID = "HaloSetup"
@@ -108,6 +136,10 @@ final class EngineAppSession: ObservableObject {
     let physicalSettings = EngineSensePhysicalSettingsModel.shared /* applies optional physical settings at launch */
     let cloudSaves = EngineCloudSaveStore()
     @Published private(set) var immersiveActive = false
+    @Published private(set) var immersiveSceneGeneration: UInt64 = 0
+    private var sceneTransitions = EngineSceneTransitions()
+    private weak var mainWindow: UIWindow?
+    private var windowObserver: UUID?
     @Published private(set) var destination: EnginePresentationDestination = .library
     @Published private(set) var presentationBusy = false
     @Published private(set) var preparingPlay = false
@@ -121,6 +153,8 @@ final class EngineAppSession: ObservableObject {
     private var actions: SceneActions?
     private var pendingDestination: EnginePresentationDestination?
     private var pendingCloseGeneration: UInt64?
+    private var pendingCloseAlreadyDismissed = false
+    private var deferredClose: (generation: UInt64, alreadyDismissed: Bool)?
     private var presentationTask: Task<Void, Never>?
     private var childChanges = Set<AnyCancellable>()
     private var quit = EngineQuitFlow()
@@ -170,6 +204,7 @@ final class EngineAppSession: ObservableObject {
             guard let self else { return }
             let generation = self.immersive.closeGeneration
             guard self.immersive.canDismissClosedSession(generation) else { return }
+            if self.pendingCloseGeneration != generation { self.pendingCloseAlreadyDismissed = false }
             self.pendingCloseGeneration = generation
             self.drainPresentationRequests()
         }
@@ -215,6 +250,7 @@ final class EngineAppSession: ObservableObject {
             cloudSaves.startCloudMonitoring()
             syncSavesIfIdle()
         }
+        if active { retryDeferredReturn(onActivation: true) }
         reconcilePauseAffordance()
     }
 
@@ -323,9 +359,58 @@ final class EngineAppSession: ObservableObject {
     func hideSettings() { actions?.dismissWindow(Self.settingsWindowID) }
     func hideControls() { actions?.dismissWindow(Self.controlsWindowID) }
 
-    func startImmersive(_ layer: LayerRenderer) {
+    func mainWindowChanged(_ window: UIWindow?, observer: UUID) {
+        if let window { windowObserver = observer; mainWindow = window }
+        else if windowObserver == observer { mainWindow = nil; windowObserver = nil }
+        retryDeferredReturn()
+    }
+
+    func startImmersive(_ layer: LayerRenderer, generation: UInt64) {
+        guard sceneTransitions.ownsScene(generation), immersive.opening,
+              immersive.ownsOperation(generation), !quit.blocksPresentation else { return }
         refresh()
         immersive.start(layer: layer)
+    }
+
+    func immersiveSceneDisappeared(generation: UInt64) {
+        guard sceneTransitions.claimDisappearance(generation) else { return }
+        EngineImmersiveTrace.shared.record("app.immersiveScene.disappeared")
+        // Also handles dismissal during ARKit startup, before a render loop
+        // exists to report closeRequest. Only this scene can stop its control.
+        immersive.finish()
+        pendingCloseGeneration = immersive.operationGeneration
+        pendingCloseAlreadyDismissed = true
+        drainPresentationRequests()
+    }
+
+    private var returnDestination: EnginePresentationDestination {
+        EngineSceneTransitions.returnDestination(engineActive: engine.isActive, quitting: quit.blocksPresentation)
+    }
+
+    private func waitForMainWindow() async -> Bool {
+        let deadline = ProcessInfo.processInfo.systemUptime + 8
+        while !Task.isCancelled {
+            if mainWindow?.windowScene?.activationState == .foregroundActive { return true }
+            if ProcessInfo.processInfo.systemUptime >= deadline { return false }
+            do { try await Task.sleep(for: .milliseconds(50)) } catch { return false }
+        }
+        return false
+    }
+
+    private func waitForImmersiveFrame(_ generation: UInt64) async -> Bool {
+        let deadline = ProcessInfo.processInfo.systemUptime + 12
+        while !Task.isCancelled {
+            let owned = sceneTransitions.ownsScene(generation)
+            if EngineSceneTransitions.canHideWindow(sceneOwned: owned, immersiveActive: immersive.active,
+                    completedFrames: immersive.frameCounts().gpuCompleted,
+                    returnPending: pendingDestination != nil || pendingCloseGeneration != nil,
+                    quitting: quit.blocksPresentation) { return true }
+            guard owned, !quit.blocksPresentation, pendingDestination == nil,
+                  pendingCloseGeneration == nil, immersive.active || immersive.opening,
+                  ProcessInfo.processInfo.systemUptime < deadline else { return false }
+            do { try await Task.sleep(for: .milliseconds(50)) } catch { return false }
+        }
+        return false
     }
 
     private func drainPresentationRequests() {
@@ -341,8 +426,10 @@ final class EngineAppSession: ObservableObject {
             }
             while let actions = self.actions {
                 if let generation = self.pendingCloseGeneration {
+                    let alreadyDismissed = self.pendingCloseAlreadyDismissed
                     self.pendingCloseGeneration = nil
-                    await self.dismissClosedSession(generation, using: actions)
+                    self.pendingCloseAlreadyDismissed = false
+                    await self.dismissClosedSession(generation, alreadyDismissed: alreadyDismissed, using: actions)
                     continue
                 }
                 if let destination = self.pendingDestination {
@@ -357,20 +444,46 @@ final class EngineAppSession: ObservableObject {
         }
     }
 
-    private func dismissClosedSession(_ generation: UInt64, using actions: SceneActions) async {
+    private func dismissClosedSession(_ generation: UInt64, alreadyDismissed: Bool, using actions: SceneActions) async {
         guard immersive.canDismissClosedSession(generation) else { return }
-        // visionOS cannot dismiss the final scene: establish the ordinary
-        // window before cleaning up an invalidated or failed immersive space.
-        destination = .library
+        destination = returnDestination
         actions.openWindow(Self.libraryWindowID)
-        EngineImmersiveTrace.shared.record("app.dismissImmersive.begin (closeRequest)")
-        await actions.dismissSpace()
-        EngineImmersiveTrace.shared.record("app.dismissImmersive.end (closeRequest)")
+        let attached = await waitForMainWindow()
+        guard immersive.canDismissClosedSession(generation) else { return }
+        guard attached else {
+            // A headset removed or an unavailable window must not consume the
+            // return intent. Retry on foreground/attachment, without a busy loop.
+            deferredClose = (generation, alreadyDismissed)
+            presentationMessage = "The game window is reconnecting. Halo is still running."
+            return
+        }
+        deferredClose = nil
+        let scene = immersiveSceneGeneration
+        sceneTransitions.beginDismissal(scene)
+        if !alreadyDismissed {
+            EngineImmersiveTrace.shared.record("app.dismissImmersive.begin (closeRequest)")
+            await actions.dismissSpace()
+            EngineImmersiveTrace.shared.record("app.dismissImmersive.end (closeRequest)")
+        }
         guard immersive.canDismissClosedSession(generation) else { return }
         immersive.finish()
-        actions.dismissWindow(Self.controlsWindowID)
+        sceneTransitions.finishScene(scene)
+        dismissAppMenus(using: actions)
         dismissPausePanel(using: actions)
-        if !quit.blocksPresentation { presentationMessage = immersive.status }
+        presentationMessage = nil
+    }
+
+    private func retryDeferredReturn(onActivation: Bool = false) {
+        guard let deferred = deferredClose else { return }
+        guard immersive.canDismissClosedSession(deferred.generation) else {
+            deferredClose = nil
+            return
+        }
+        guard onActivation || mainWindow?.windowScene?.activationState == .foregroundActive else { return }
+        deferredClose = nil
+        pendingCloseGeneration = deferred.generation
+        pendingCloseAlreadyDismissed = deferred.alreadyDismissed
+        drainPresentationRequests()
     }
 
     /// Runs after any earlier presentation work in the same serialized task.
@@ -396,45 +509,62 @@ final class EngineAppSession: ObservableObject {
         actions.dismissWindow(Self.pauseWindowID)
     }
 
+    private func hideMainWindow(using actions: SceneActions) {
+        // openWindow may race the old window's dismissal. Only a fresh UIKit
+        // attachment can certify that the returning game is visible again.
+        mainWindow = nil
+        windowObserver = nil
+        actions.dismissWindow(Self.libraryWindowID)
+    }
+
     private func present(_ requested: EnginePresentationDestination, using actions: SceneActions) async {
         if requested == .immersive {
+            guard engine.isActive, !quit.blocksPresentation else { return }
             if immersive.active {
                 destination = .immersive
                 dismissAppMenus(using: actions)
-                actions.dismissWindow(Self.libraryWindowID)
+                if await waitForImmersiveFrame(immersiveSceneGeneration) {
+                    hideMainWindow(using: actions)
+                }
                 return
             }
             guard let generation = immersive.prepare() else { return }
+            sceneTransitions.beginScene(generation)
+            immersiveSceneGeneration = generation
             EngineImmersiveTrace.shared.record("app.openImmersive.begin")
             let result = await actions.openSpace()
             EngineImmersiveTrace.shared.record("app.openImmersive.end: \(result)")
+            // start(layer:) advances the renderer generation exactly once.
+            guard immersive.ownsOperation(generation)
+                || (immersive.active && immersive.ownsOperation(generation &+ 1)) else { return }
             switch result {
             case .opened:
-                // start(layer:) advances the renderer generation. It may
-                // run before openSpace returns; that legitimate handoff
-                // must not be mistaken for a stale open operation.
-                let rendererGeneration = generation &+ 1
-                guard immersive.ownsOperation(generation)
-                    || (immersive.active && immersive.ownsOperation(rendererGeneration)) else { return }
-                // No settings panel opens here; the small affordance follows
-                // Halo's own menu state once frames are presented.
+                guard await waitForImmersiveFrame(generation) else {
+                    if pendingCloseGeneration == nil {
+                        await present(returnDestination, using: actions)
+                        if !quit.blocksPresentation && pendingDestination == nil {
+                            presentationMessage = "Immersive view didn't finish opening. Continue in this window and try expanding again."
+                        }
+                    }
+                    return
+                }
                 destination = .immersive
                 dismissAppMenus(using: actions)
-                actions.dismissWindow(Self.libraryWindowID)
+                hideMainWindow(using: actions)
             case .userCancelled, .error:
-                guard immersive.ownsOperation(generation) else { return }
                 immersive.finish()
+                sceneTransitions.finishScene(generation)
+                destination = returnDestination
+                actions.openWindow(Self.libraryWindowID)
                 presentationMessage = result == .userCancelled
-                    ? "Immersive view was cancelled. You can continue in a window."
-                    : "Immersive view couldn't open. You can continue in a window."
-                destination = .library
-                actions.openWindow(Self.libraryWindowID)
+                    ? "Immersive view was cancelled. Halo continues in this window."
+                    : "Immersive view couldn't open. Halo continues in this window."
             @unknown default:
-                guard immersive.ownsOperation(generation) else { return }
                 immersive.finish()
-                presentationMessage = "Immersive view couldn't open."
-                destination = .library
+                sceneTransitions.finishScene(generation)
+                destination = returnDestination
                 actions.openWindow(Self.libraryWindowID)
+                presentationMessage = "Immersive view couldn't open. Halo continues in this window."
             }
             return
         }
@@ -442,20 +572,31 @@ final class EngineAppSession: ObservableObject {
         destination = requested
         actions.openWindow(Self.libraryWindowID)
         if immersive.active || immersive.opening {
+            // Keep the live immersive scene until the existing main window
+            // is actually attached, not just until openWindow returns.
+            if requested == .window, !(await waitForMainWindow()) {
+                destination = .immersive
+                presentationMessage = "The game window couldn't reconnect. Try returning to the window again."
+                return
+            }
             let generation = immersive.operationGeneration
+            let scene = immersiveSceneGeneration
+            sceneTransitions.beginDismissal(scene)
             EngineImmersiveTrace.shared.record("app.dismissImmersive.begin (return)")
             await actions.dismissSpace()
             EngineImmersiveTrace.shared.record("app.dismissImmersive.end (return)")
             if immersive.ownsOperation(generation) { immersive.finish() }
+            sceneTransitions.finishScene(scene)
         }
         if requested == .window { dismissAppMenus(using: actions) }
         else { actions.dismissWindow(Self.controlsWindowID) }
         dismissPausePanel(using: actions)
-        // The original engine and its saves remain owned by this session.
-        // Returning to the library never calls the terminal engine stop API.
+        // This changes presentation only. Terminal engine.stop is exclusive
+        // to confirmed Quit Game; a running world never reloads here.
     }
 
     private func refresh() {
+        retryDeferredReturn()
         engine.diagnostics.launcherState = [
             "applicationActive": applicationActive, "sceneActionsBound": actions != nil,
             "assetsReady": assets.phase == .ready, "canPlay": canPlay,
@@ -526,30 +667,5 @@ final class EngineAppSession: ObservableObject {
         guard wantsPanel != pausePanelRequested else { return }
         pausePanelRequested = wantsPanel
         if wantsPanel { actions.openWindow(Self.pauseWindowID) } else { actions.dismissWindow(Self.pauseWindowID) }
-    }
-}
-
-/// Every scene supplies environment actions to the same operation owner.
-/// The controls window can return to the library after its launcher closes.
-struct EngineSceneActions: ViewModifier {
-    let session: EngineAppSession
-    @Environment(\.openWindow) private var openWindow
-    @Environment(\.dismissWindow) private var dismissWindow
-    @Environment(\.openImmersiveSpace) private var openImmersiveSpace
-    @Environment(\.dismissImmersiveSpace) private var dismissImmersiveSpace
-
-    func body(content: Content) -> some View {
-        content.onAppear {
-            let openImmersiveSpace = openImmersiveSpace
-            let dismissImmersiveSpace = dismissImmersiveSpace
-            let openWindow = openWindow
-            let dismissWindow = dismissWindow
-            session.bindSceneActions(.init(
-                openSpace: { await openImmersiveSpace(id: EngineImmersiveSession.spaceID) },
-                dismissSpace: { await dismissImmersiveSpace() },
-                openWindow: { openWindow(id: $0) },
-                dismissWindow: { dismissWindow(id: $0) }
-            ))
-        }
     }
 }

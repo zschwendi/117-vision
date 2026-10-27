@@ -8,10 +8,17 @@ struct EngineSettingsView: View {
     @State private var path: [EngineSettingsPage] = []
     @AppStorage(EngineLaunchPreferences.visionResolutionKey) private var resolution = EngineLaunchPreferences.visionHighestResolution
     @AppStorage(EngineLaunchPreferences.visionFrameRateKey) private var frameRate = EngineVisionFrameRate.maximum.rawValue
-    @AppStorage("HaloPreferredPresentation") private var preferredPresentation = EngineDisplayMode.immersive.rawValue
-
-    private var displayMode: EngineDisplayMode { EngineDisplayMode(rawValue: preferredPresentation) ?? .immersive }
     private var presentationLocked: Bool { session.presentationBusy || session.preparingPlay || session.quitBlocksPresentation }
+    private var currentDisplayMode: EngineDisplayMode? {
+        switch session.gameSurface {
+        case .window: return .window
+        case .immersive: return .immersive
+        case .none: return nil
+        }
+    }
+    private var presentationLabel: String {
+        session.engine.isActive ? (currentDisplayMode?.label ?? "In background") : "Not running"
+    }
 
     var body: some View {
         NavigationStack(path: $path) {
@@ -19,18 +26,16 @@ struct EngineSettingsView: View {
                 Section {
                     VStack(alignment: .leading, spacing: 8) {
                         Text("Make Halo feel right").font(.title2.bold())
-                        Text("Adjust your view while you play. Presentation settings are remembered on this device.")
+                        Text("Adjust your view while you play. Halo starts in a window; expand it whenever you're ready.")
                             .foregroundStyle(.secondary)
                     }.padding(.vertical, 8)
                 }
                 Section("Play") {
-                    Picker("Play in", selection: Binding(get: { displayMode }, set: chooseDisplayMode)) {
-                        ForEach(EngineDisplayMode.allCases) { mode in
-                            Label(mode.label, systemImage: mode.symbol).tag(mode)
-                        }
+                    LabeledContent("Current presentation", value: presentationLabel)
+                    displayButton(.window, title: session.engine.isActive ? "Play in Window" : "Play Halo", id: "settings.window")
+                    if session.engine.isActive {
+                        displayButton(.immersive, title: "Play Immersively", id: "settings.immersive")
                     }
-                    .disabled(presentationLocked)
-                    .senseControllerTarget("settings.mode")
                     NavigationLink(value: EngineSettingsPage.sense) { Label("Sense Controls & Turning", systemImage: "gamecontroller") }
                         .senseControllerTarget("settings.sense")
                     NavigationLink(value: EngineSettingsPage.live) { Label("Depth, View & Sound", systemImage: "slider.horizontal.3") }
@@ -98,9 +103,17 @@ struct EngineSettingsView: View {
     }
     private var controllerItems: [EngineControllerMenuItem] {
         if showingReset { return [.init(id: "settings.cancelReset", title: "Cancel reset", activate: { showingReset = false })] }
-        return [
-            .init(id: "settings.mode", title: "Play in", value: displayMode.label, enabled: !presentationLocked,
-                  activate: cycleDisplayMode, adjust: { _ in cycleDisplayMode() }),
+        var items: [EngineControllerMenuItem] = [
+            .init(id: "settings.window", title: session.engine.isActive ? "Play in Window" : "Play Halo",
+                  enabled: !presentationLocked && session.canPlay && currentDisplayMode != .window,
+                  activate: { chooseDisplayMode(.window) })
+        ]
+        if session.engine.isActive {
+            items.append(.init(id: "settings.immersive", title: "Play Immersively",
+                               enabled: !presentationLocked && session.canPlay && currentDisplayMode != .immersive,
+                               activate: { chooseDisplayMode(.immersive) }))
+        }
+        items += [
             route("sense", "Sense Controls & Turning", .sense), route("live", "Depth, View & Sound", .live),
             route("orientation", "Orientation & Recenter", .orientation),
             route("controller", "Controller Help", .controller),
@@ -114,18 +127,24 @@ struct EngineSettingsView: View {
             route("about", "About \(EngineLibraryTheme.productName)", .about),
             .init(id: "settings.done", title: "Done", activate: session.hideSettings)
         ]
+        return items
+    }
+    private func displayButton(_ mode: EngineDisplayMode, title: String, id: String) -> some View {
+        let current = currentDisplayMode == mode
+        return Button { chooseDisplayMode(mode) } label: {
+            HStack {
+                Label(title, systemImage: mode.symbol)
+                Spacer()
+                if current { Image(systemName: "checkmark").foregroundStyle(EngineLibraryTheme.accent) }
+            }
+        }
+        .disabled(presentationLocked || !session.canPlay || current)
+        .accessibilityAddTraits(current ? .isSelected : [])
+        .senseControllerTarget(id)
     }
     private func chooseDisplayMode(_ mode: EngineDisplayMode) {
         guard !presentationLocked else { return }
-        preferredPresentation = mode.rawValue
-        // Choosing a preference in the launcher must not start the game. An
-        // active game can change presentation from this same Settings row.
-        if session.engine.isActive && session.destination != .library {
-            session.play(in: mode)
-        }
-    }
-    private func cycleDisplayMode() {
-        chooseDisplayMode(displayMode == .window ? .immersive : .window)
+        session.play(in: session.engine.isActive ? mode : .window)
     }
     private func route(_ id: String, _ title: String, _ page: EngineSettingsPage) -> EngineControllerMenuItem {
         .init(id: "settings." + id, title: title, activate: { path.append(page) })
@@ -226,7 +245,6 @@ struct EngineGameMenuView: View {
     @ObservedObject var engine: EngineRuntimeModel
     @ObservedObject var immersive: EngineImmersiveSession
     @ObservedObject private var controller = EngineAppControllerNavigation.shared
-    @AppStorage("HaloPreferredPresentation") private var preferredPresentation = EngineDisplayMode.immersive.rawValue
     @State private var path: [EngineGameMenuPage] = []
     @State private var confirmingQuit = false
     @State private var showingAdjustment = false
@@ -417,12 +435,11 @@ struct EngineGameMenuView: View {
     }
     private func choose(_ mode: EngineDisplayMode) {
         guard !locked, !isCurrent(mode) else { return }
-        preferredPresentation = mode.rawValue
         if mode == .immersive { session.play(in: .immersive) } else { session.request(.window) }
     }
     private func resume() {
         guard !locked else { return }
-        if surface == .none { session.play(in: EngineDisplayMode(rawValue: preferredPresentation) ?? .immersive) }
+        if surface == .none { session.play(in: .window) }
         // Closes app panels only; it never sends Halo an unpause, so a genuine
         // pause stays with Halo's own menu. App menus hold Halo's controller
         // input while visible, so close both.

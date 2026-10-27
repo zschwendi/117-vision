@@ -1,10 +1,10 @@
 {
-  "version": "1.0.28",
+  "version": "1.0.29",
   "formatVersion": 1,
   "license": "MIT for original project code; third-party and asset notices retained",
   "scope": "Source, documentation, generated app artwork and public configuration. Retail game content, translated executable output, private registration, saves, signed apps and runtime mod packs are excluded.",
-  "fileCount": 592,
-  "totalBytes": 13514173,
+  "fileCount": 599,
+  "totalBytes": 13569468,
   "files": [
     {
       "path": ".github/ISSUE_TEMPLATE/bug_report.yml",
@@ -18,8 +18,8 @@
     },
     {
       "path": ".github/workflows/source-checks.yml",
-      "bytes": 2247,
-      "sha256": "bd4ea3e9ef65f646cf2ff54d70654d3509fa8aa4698641b6d84c6fe32c99c315"
+      "bytes": 2798,
+      "sha256": "890b22fb00733cf73831b099596d7e7327f8e1a121af0359e3ff68cde3b6c8ee"
     },
     {
       "path": ".gitignore",
@@ -38,8 +38,8 @@
     },
     {
       "path": "CHANGELOG.md",
-      "bytes": 8830,
-      "sha256": "af4d2ee6769fa7759f92324d29f888efc622b7e20b34170cf5b610d759a87929"
+      "bytes": 9667,
+      "sha256": "8b54d710657cb23ab5bfd807d7878f442d5667295311d35ff39963123bec3e3c"
     },
     {
       "path": "CONTRIBUTING.md",
@@ -53,8 +53,8 @@
     },
     {
       "path": "README.md",
-      "bytes": 4783,
-      "sha256": "6085eb192ecd9250920f7fb0dbdd8048c560099145c9f2f5f63665cd5b9f1289"
+      "bytes": 4866,
+      "sha256": "0c410097b02b2274e17f57858481d97eac06f5dd7fdac2471af21316c4747624"
     },
     {
       "path": "THIRD_PARTY.md",
@@ -64,7 +64,7 @@
     {
       "path": "VERSION",
       "bytes": 7,
-      "sha256": "497165511148a62a6815b0fc5cfe626b8909d8d3a6a31b9470820a37096f2310"
+      "sha256": "0e887dd135a865254dda6079a7ffdba2b348cb74831596702a01cde250a392f8"
     },
     {
       "path": "decompilation/c9acf0c46954/extra-function-entries.txt",
@@ -103,13 +103,13 @@
     },
     {
       "path": "docs/CONTROLS.md",
-      "bytes": 15645,
-      "sha256": "c4c3952b99506d98be3c2dbef5dfc6f72799e901a42cafa97343be0c6ba6404c"
+      "bytes": 16075,
+      "sha256": "a2579d88493addde6623c9a16425c2494954f9dd093e266b836e60d8c8801988"
     },
     {
       "path": "docs/FEATURES.md",
-      "bytes": 1967,
-      "sha256": "0a94e2101dd0cd2059d767c547dcb2830e879b0988abeca5a11c907c0c3416d2"
+      "bytes": 2048,
+      "sha256": "921ea4639922fa1aae372647b4568cf450ead83bfdee18200239498bdb39ef50"
     },
     {
       "path": "docs/GRAPHICS_QUALITY.md",
@@ -118,8 +118,8 @@
     },
     {
       "path": "docs/KNOWN_ISSUES.md",
-      "bytes": 3319,
-      "sha256": "50849b2efc983db3a96c73fb632ba31d63f07f4d942759f3645a0b4d02ebf62e"
+      "bytes": 3495,
+      "sha256": "4accf2290a9d2e8ffe31b905b2899c26ecd44d9f5a18c8fb4286701fba21ee51"
     },
     {
       "path": "docs/RELEASING.md",
@@ -133,8 +133,8 @@
     },
     {
       "path": "docs/VALIDATION.md",
-      "bytes": 21956,
-      "sha256": "6403914f3c6c919eea7093734ac28a1658467269fa9dee797d0f0406b4a17a68"
+      "bytes": 23694,
+      "sha256": "92050ba1b178ebe1fc922599a9cda77281c656e44a0a41ece26010d094299083"
     },
     {
       "path": "docs/assets/117-plasma-icon.json",
@@ -1968,8 +1968,8 @@
     },
     {
       "path": "native/EngineVision/Sources/EngineFrameView.swift",
-      "bytes": 6783,
-      "sha256": "1c31dd5ca354b21d753ffdbe05298c1f85d9518064518c11a02f9a417fa80b05"
+      "bytes": 9687,
+      "sha256": "c60e073ff593132c67da3f3164ca2937b458830fdf725b2adce610fcbce52582"
     },
     {
       "path": "native/EngineVision/Sources/EngineGatherDiagnostics.swift",
@@ -2003,8 +2003,8 @@
     },
     {
       "path": "native/EngineVision/Sources/EngineImmersive.swift",
-      "bytes": 114142,
-      "sha256": "79fbdf68e866730dc7fb34a51dbfc74fe01339073e3662e8fa9b9e4b01108edb"
+      "bytes": 114674,
+      "sha256": "2be130d8525484d46c7428d5294b22d60b4ce0c90b459305f8a767015365118d"
     },
     {
       "path": "native/EngineVision/Sources/EngineImmersiveHUDPose.swift",
@@ -2063,13 +2063,18 @@
     },
     {
       "path": "native/EngineVision/Sources/EngineLibraryView.swift",
-      "bytes": 24781,
-      "sha256": "17746515887980c26a8897be153d39e4843d6d3eede200f7e7165677d6b8e64a"
+      "bytes": 25207,
+      "sha256": "ed64dd26439803b6bb9683e9ad168bb757806e73100d2dc86bfecff8934461b7"
     },
     {
       "path": "native/EngineVision/Sources/EngineLiveSettingsView.swift",
       "bytes": 7005,
       "sha256": "49cc95d6d37c884fd30765f3ab70a311bdc51a3a90d90f7770c6154aad0a63f9"
+    },
+    {
+      "path": "native/EngineVision/Sources/EngineMainWindowAttachment.swift",
+      "bytes": 802,
+      "sha256": "cd7f1d0a0795a015ed052b908b4d174670a58937ae3c444c799c141617b2e805"
     },
     {
       "path": "native/EngineVision/Sources/EngineMenuInput.swift",
@@ -2100,6 +2105,11 @@
       "path": "native/EngineVision/Sources/EngineSaveArchive.swift",
       "bytes": 14321,
       "sha256": "6ff657e10e0ecc24b7375d72e250e3419685ae140afdaff0cdd305dfcb4d1f86"
+    },
+    {
+      "path": "native/EngineVision/Sources/EngineSceneTransitions.swift",
+      "bytes": 1692,
+      "sha256": "78fd2bcfa67b8a9f5a1e06ef45272ab419fec19d550f69264529ec9c9cdeacc0"
     },
     {
       "path": "native/EngineVision/Sources/EngineSenseGestures.swift",
@@ -2168,8 +2178,8 @@
     },
     {
       "path": "native/EngineVision/Sources/EngineSettingsView.swift",
-      "bytes": 30773,
-      "sha256": "15f5f6ca9b4f44487e0147860e76fc2ebed43bbcca95a49f565b591287e89d35"
+      "bytes": 31382,
+      "sha256": "5c9ada430824308d63835a4976dc3c480cb589633dc0186d5a67f202fe6ad7db"
     },
     {
       "path": "native/EngineVision/Sources/EngineVision-Bridging-Header.h",
@@ -2187,14 +2197,19 @@
       "sha256": "03350a819d762173f57a7f8a022577fe54da8c9b563f29e44fab0d107a3eea0c"
     },
     {
+      "path": "native/EngineVision/Sources/EngineWindowComposition.swift",
+      "bytes": 5683,
+      "sha256": "f876bd5158e3146015f3924686a56a1a0369715fddfa7930b1ba1fb3d1155273"
+    },
+    {
       "path": "native/EngineVision/Sources/EngineWorldCadence.swift",
       "bytes": 4084,
       "sha256": "131e25c87b8a214522ba0a744afec28673e5bfacba2014378645c95c8599da41"
     },
     {
       "path": "native/EngineVision/Sources/HaloEngineVisionApp.swift",
-      "bytes": 28151,
-      "sha256": "b844674520e77008a998ab1286ffb541abb7f99832c0e9247481d7b4f3a23352"
+      "bytes": 33899,
+      "sha256": "66764cce633c53e999c042dc61b4985b5b3afe96c9b6112d3544a7131fbe42ce"
     },
     {
       "path": "native/EngineVision/Sources/audio_session.inc",
@@ -2432,6 +2447,11 @@
       "sha256": "503f673d9935dbc84a2a89181f0614051044aa85b7b1b83066eb5b8c71229fe7"
     },
     {
+      "path": "native/EngineVision/Tests/SceneTransitionsValidation.swift",
+      "bytes": 11090,
+      "sha256": "0096a4255f2f9973a456ac280bc2c8eb1b3ecf3b027216acf4c3dff04ba50f93"
+    },
+    {
       "path": "native/EngineVision/Tests/SenseGesturesValidation.swift",
       "bytes": 31554,
       "sha256": "f1723aeb2cb54cc414d62488c1404c64386f267d1901de523fd7f919fc51b3b0"
@@ -2507,6 +2527,11 @@
       "sha256": "5394684e59c3d06a333e685988aa63989a4c7dff34bb2837fd0aa9c337d0ae05"
     },
     {
+      "path": "native/EngineVision/Tests/WindowFrameGPUValidation.swift",
+      "bytes": 11094,
+      "sha256": "f7946b38194d839647df4afc275050c44df6f71f449b5341d64b6f31107ac369"
+    },
+    {
       "path": "native/EngineVision/Tests/WorldCadenceValidation.swift",
       "bytes": 4262,
       "sha256": "6c179be94a2f64647295b6ea4c8260dc4b57c16b5e88c5adcc076c580a11fc88"
@@ -2514,7 +2539,7 @@
     {
       "path": "native/EngineVision/project.yml",
       "bytes": 4971,
-      "sha256": "0c30b013a374854fa2538cdeff769b751d81fda23f2d44a7b53a3091a8113d5f"
+      "sha256": "cac49404b3256fdc97dfd131d028b6ccb6c73bf016101c32ea01c75a91e2bf91"
     },
     {
       "path": "native/Tests/EngineRuntimeContract.c",
@@ -2764,7 +2789,7 @@
     {
       "path": "tools/build_engine_vision.py",
       "bytes": 16857,
-      "sha256": "4a6062b094566268242bddcb75c580317bf2c1e8c2296a160aa9f9fa56181d73"
+      "sha256": "fb2c1e700743f2f66e7d68068404eaccd9a1546745aab704076107df7a220b09"
     },
     {
       "path": "tools/build_engine_vision_simulator.py",
@@ -2893,8 +2918,8 @@
     },
     {
       "path": "tools/run_source_checks.py",
-      "bytes": 44590,
-      "sha256": "445411baf325eb74be18d544d3d2da10ec3a62757ac03f6eccc720faa6bbf3e9"
+      "bytes": 47460,
+      "sha256": "72c5558f16f77387b6ac1bb08a56f61d1a53248ed16e6c3b7ba75af69646a31d"
     },
     {
       "path": "tools/setup_halo.py",
@@ -2932,6 +2957,11 @@
       "sha256": "06d1b1eb52170f8ad671dbefc190ec67dca96fee826814c1e0a74b23a4d6f495"
     },
     {
+      "path": "tools/test_scene_transitions.py",
+      "bytes": 4645,
+      "sha256": "931cbba3e59abbd824f337c5b9ed053b8efedf4928be64e26621503d6efa6924"
+    },
+    {
       "path": "tools/test_setup_halo.py",
       "bytes": 11916,
       "sha256": "e31119fabb488fb698bb780e1eb27fbc28e1bfa161fbd1ff195cfdb445447bc8"
@@ -2953,8 +2983,13 @@
     },
     {
       "path": "tools/test_window_frame_clear.py",
-      "bytes": 11686,
-      "sha256": "7ba72df927b8d1e99d05fb7b301f6721ad5af21b0cd5ff547501deb9ac7d411e"
+      "bytes": 11792,
+      "sha256": "4177681edba6267065f2982fb736f2954ce95484c9ae9bf669b65f106a768480"
+    },
+    {
+      "path": "tools/test_window_gpu_frame.py",
+      "bytes": 3198,
+      "sha256": "545438653e9cd0fd1be4415b711037489214e7cd8d3b469aa48a29200eb81f50"
     },
     {
       "path": "tools/visual_assets.py",

@@ -2,6 +2,10 @@
 
 Pair a compatible controller with Vision Pro before launching. On iPhone and iPad, gameplay touch controls appear automatically when no supported controller or physical keyboard is connected.
 
+## Vision Pro window and immersive view
+
+Select the game card to start Halo in the window. The **Expand** button above the game continues that same session immersively; the adjacent **Settings** gear opens the game menu. Closing immersive with the system control returns to the running game window. You can also choose **Play in Window** in the game menu. Switching views does not restart Halo or start a separate game instance.
+
 ## PS VR2 Sense
 
 Pair the left and right Sense controllers separately and allow accessory tracking.

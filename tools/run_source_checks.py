@@ -105,6 +105,46 @@ def run_metal_check(temp, flags, name):
     result = run([binary], capture_output=True)
     return not any(line.startswith('SKIP:') for line in result.stdout.splitlines())
 
+# These runners extract the production Swift callback/draw bodies rather than
+# recreating their behavior in a test-only implementation.
+SCRIPT_CHECKS = {'scene-transitions': 'test_scene_transitions.py'}
+METAL_SCRIPT_CHECKS = {
+    'window-gpu-frame': 'test_window_gpu_frame.py',
+    'window-frame-clear': 'test_window_frame_clear.py',
+}
+
+def run_script_check(temp, name, sanitize=False):
+    if platform.system() != 'Darwin':
+        print(f'SKIP {name}: requires macOS Swift/Metal frameworks', flush=True)
+        return False
+    if name in METAL_SCRIPT_CHECKS:
+        # Hosted macOS CI may have Metal headers but no usable GPU. Compile and
+        # execute an actual availability probe; compiler failures remain failures.
+        probe_source = Path(temp) / 'window-metal-availability.m'
+        probe = Path(temp) / 'window-metal-availability'
+        if not probe.exists():
+            probe_source.write_text('#import <Metal/Metal.h>\n#include <stdio.h>\n'
+                                    'int main(void) { @autoreleasepool {\n'
+                                    'puts(MTLCreateSystemDefaultDevice() ? "READY" : "SKIP: no Mac Metal device");\n'
+                                    'return 0; } }\n')
+            run([os.environ.get('CC', 'clang'), '-fobjc-arc', probe_source,
+                 '-framework', 'Foundation', '-framework', 'Metal', '-o', probe])
+        availability = run([probe], capture_output=True)
+        if availability.stdout.strip() == 'SKIP: no Mac Metal device':
+            print(f'SKIP {name}: no Mac Metal device; not a GPU pass', flush=True)
+            return False
+        if availability.stdout.strip() != 'READY':
+            raise RuntimeError(f'Unexpected Metal availability result: {availability.stdout!r}')
+        script = METAL_SCRIPT_CHECKS[name]
+    else:
+        script = SCRIPT_CHECKS[name]
+    command = [sys.executable, '-B', ROOT / 'tools' / script, '--output-dir', Path(temp) / name]
+    # The fixture runner compiles Swift with ASan. GPU checks are separate,
+    # unsanitized checks and are never advertised as sanitizer coverage.
+    if sanitize and name == 'scene-transitions': command.append('--sanitize')
+    run(command)
+    return True
+
 def run_frame_limit_sdk_check(temp):
     """Compile actual device target routing; no device, simulator or game code.
 
@@ -301,7 +341,8 @@ def main():
         cases.append(('weapon_haptics', [HOST / 'haptics.c', HOST / 'halo_settings.c']))
     if only:
         known = ({name for name, _ in cases} | {check[0] for check in CONTROLLER_CHECKS} |
-                 set(SWIFT_CHECKS) | set(METAL_CHECKS) | {'frame-limit-sdk-routing'})
+                 set(SWIFT_CHECKS) | set(METAL_CHECKS) | set(SCRIPT_CHECKS) |
+                 set(METAL_SCRIPT_CHECKS) | {'frame-limit-sdk-routing'})
         if only - known: parser.error('unknown or unavailable checks: ' + ', '.join(sorted(only - known)))
         cases = [case for case in cases if case[0] in only]
     flags = ['-O1', '-g', '-fsanitize=address,undefined', '-fno-omit-frame-pointer'] if args.sanitize else ['-O2']
@@ -354,6 +395,13 @@ def main():
             for name in SWIFT_CHECKS:
                 if name in only:
                     if run_swift_check(temp, name, args.sanitize): passed += 1
+                    else: skipped.append(name)
+            for name in (*SCRIPT_CHECKS, *METAL_SCRIPT_CHECKS):
+                if name in only:
+                    if args.portable_only and name in METAL_SCRIPT_CHECKS:
+                        print(f'SKIP {name}: --portable-only excludes GPU execution', flush=True)
+                        skipped.append(name)
+                    elif run_script_check(temp, name, args.sanitize): passed += 1
                     else: skipped.append(name)
             if 'frame-limit-sdk-routing' in only:
                 if mac and run_frame_limit_sdk_check(temp): passed += 1
@@ -614,6 +662,8 @@ def main():
             run_frame_limit_sdk_check(temp)
             run_swift_check(temp, 'pad-input-policy', args.sanitize)
             run_swift_check(temp, 'pad-input-session', args.sanitize)
+            for name in (*SCRIPT_CHECKS, *METAL_SCRIPT_CHECKS):
+                if not run_script_check(temp, name, args.sanitize): skipped_cases.add(name)
             binary = Path(temp) / 'layer-alignment-gpu'
             run(['swiftc', '-O', '-module-cache-path', Path(temp) / 'swift-cache', *alignment,
                  ROOT / 'native/EngineVision/Tests/LayerAlignmentGPUValidation.swift', '-o', binary])

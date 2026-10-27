@@ -1,12 +1,22 @@
 # 117 validation
 
-## Current preview: build 127
+## Current mobile preview: build 128
+
+Version 1.0.28 adds automatic iPhone/iPad touch gameplay controls when neither a supported controller nor a physical keyboard is connected. Movement, aiming and held fire can run together. Named actions resolve the current keyboard/mouse-button bindings without changing profiles; unsupported or unbound actions do not silently trigger another control. Menus, app panels, scene loss and hardware changes release held touch input.
+
+The frozen source passed independent input/lifecycle and safe-area review, focused native and Swift tests, and integrated ASan/UBSan checks. Coverage includes actual DirectInput buffered events, held-input cancellation, short taps, remapped mouse buttons, first-pump input, simultaneous touch roles, and controller/keyboard handoff. The iPhoneOS SDK typecheck and all 22 mobile builder tests pass.
+
+A fresh physical-device SDK build compiled all 60 native units and 25 Swift sources, linked and signed as 117 / 1.0.28 / 128. No native objects were reused. The mobile bundle and save identities and Vision-save seeding requirement are retained. Independent package verification passes: all 8,631 frozen inputs and actual compiler records match, the signing identity and cloud entitlements are unchanged, signatures verify, both mobile device families are included, and the 42-file owned payload is intact. Icon compilation has no errors or warnings; two existing weak-capture Swift warnings remain in the shared asset loader. No build 128 installation or physical touch acceptance is claimed. Vision Pro has no new build 128 package; the latest verified installation remains build 127.
+
+Touch feel, every action during campaign gameplay, safe-area layout on real screens, controller/keyboard hot-plug, Magic Keyboard behavior and the live cross-device iCloud roundtrip still need physical acceptance.
+
+## Previous preview: build 127
 
 Version 1.0.27 replaces the C-shaped plasma loop with a bold 117 numeral mark. Both platform asset catalogs compile without diagnostic errors or warnings. The visionOS icon keeps the complete opaque artwork on its back layer and uses a fully transparent required front layer. The mobile icon uses the same artwork. The native numeral 1 cover and custom-artwork preferences are unchanged.
 
 Build 127 is an artwork and package-version update using build 126's verified executable. Independent review confirms all 48 Mach-O sections and every non-signature byte remain identical; no engine or Swift sources were recompiled. Strict signature verification passes, with the same signing certificate, provisioning profile and cloud entitlements. Gameplay, launcher code, bundle identity and save locations are unchanged.
 
-Build 127 is installed on Vision Pro without an automated launch. All 55 local save files match their pre-install hashes. The iPhone/iPad source artwork is updated and its asset catalog compiles, but no new mobile package or physical iPad installation is claimed. Physical appearance and launcher acceptance remain pending.
+Build 127 is installed on Vision Pro without an automated launch. All 55 local save files match their pre-install hashes. A signed iPhone/iPad package was subsequently prepared using build 126's verified mobile executable; all 50 Mach-O sections and non-signature bytes are unchanged, with the same signing profile, cloud identity and owned payload. Its iPad and iPhone installation attempts did not complete. The last device inventories still showed build 121 on iPad and no installation on iPhone. Physical appearance and launcher acceptance remain pending.
 
 ## Previous preview: build 126
 

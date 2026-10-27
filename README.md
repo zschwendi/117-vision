@@ -9,7 +9,7 @@ This repository contains source. Supply your own supported retail Halo PC instal
 ## Play
 
 - **Vision Pro:** immersive or windowed play. PSVR2 Sense controllers provide tracked weapon aiming; a normal gamepad remains supported.
-- **iPad and iPhone:** a native Metal app with controller or keyboard/mouse input. Touch can aim, fire and send a secondary click; movement still needs a keyboard or controller. See the [mobile controls](native/EnginePad/INPUT.md).
+- **iPad and iPhone:** a native Metal app with controller or keyboard/mouse input. Without a supported controller or physical keyboard, on-screen controls provide movement, aiming and the main gameplay actions. See the [mobile controls](native/EnginePad/INPUT.md).
 - **Saves:** local saves plus optional iCloud sync, immutable recovery snapshots, and explicit conflict handling. After gameplay, fully close and reopen the app to sync before switching devices. See [save setup and migration](docs/BUILDING.md).
 
 These are development builds. Physical iPad/iPhone gameplay and the live cross-device iCloud roundtrip have not yet been accepted. Source tests and compilation are separate from physical-device gameplay acceptance. See [validation](docs/VALIDATION.md) and [known issues](docs/KNOWN_ISSUES.md) for the tested boundaries.
@@ -22,7 +22,7 @@ These are development builds. Physical iPad/iPhone gameplay and the live cross-d
 - Smooth or snap turning, physical turning, recentering, and presentation settings.
 - A touch- and controller-friendly launcher, controller status, and in-game settings.
 - A shared iPad/iPhone app and cloud-save recovery/migration workflow.
-- Mobile keyboard and mouse/trackpad controls, direct-screen touch aiming, and native-resolution/display-refresh options.
+- Mobile keyboard and mouse/trackpad controls, automatic touch gameplay controls, and native-resolution/display-refresh options.
 - Gameplay prompts that name the active controller controls, with keyboard labels after keyboard or mouse input.
 - Maximum graphics selected once on the first build 124 launch; later lower choices are kept.
 

@@ -1,8 +1,9 @@
 # Keyboard, mouse/trackpad and touch (iPad and iPhone)
 
 A controller is not required to start Halo. A hardware keyboard moves; a
-mouse, trackpad or the touchscreen aims and clicks. Touch alone aims and
-clicks but cannot move. Physical acceptance of all of this is still pending.
+mouse, trackpad or the touchscreen aims and clicks. When neither a supported
+controller nor a physical keyboard is connected, on-screen controls provide
+movement, aiming and the main gameplay actions. Physical acceptance remains pending.
 
 ## Bindings
 
@@ -44,13 +45,33 @@ controls and the binding editor keep the original text; bindings are unchanged.
 
 ## Touch
 
-- One-finger drag: aim (in Halo menus it moves Halo's own cursor).
-- One-finger tap: primary click, sent when the finger lifts. In Halo menus it
-  clicks at Halo's cursor, not under the finger.
-- Two fingers landing together and lifting without moving: one secondary
-  click. This is not a double tap. No primary fires when the second finger
-  joins, and nothing fires after a drag, a cancellation, a long hold or a
-  third finger. There is no touch hold-to-fire and no touch movement.
+During gameplay, with no supported controller or physical keyboard connected:
+
+- Left on-screen stick: move and strafe.
+- Open right side: drag to look and aim.
+- Fire: hold to shoot or charge; movement and aiming can be used at the same time.
+- Zoom, Jump, Crouch, Reload, Use/pickup, Swap, Grenade, Type (grenade selection),
+  Melee and Light (flashlight) provide the remaining core actions. Hold Crouch
+  to duck, or Use when Halo requests a held interaction.
+- The existing toolbar provides Pause, Library and Settings.
+
+Connecting a supported controller or physical keyboard releases all held touch
+actions and hides the gameplay overlay. Disconnecting the last one restores it
+with neutral input. Opening an app panel, Halo menu, losing scene focus or
+backgrounding also releases held touch actions. A mouse alone does not hide it.
+
+Touch action buttons and movement follow the current keyboard and mouse-button
+bindings without editing the saved profile. Buttons for unbound actions, or
+actions bound only to a joystick or axis, are dimmed and unavailable; unbound
+movement directions do not respond. Custom mouse-look axis remapping is not
+resolved by this button mapping.
+
+Halo menus and hardware-keyboard touchscreen aiming keep the original direct
+touch gestures: one-finger drag moves the aim/cursor; one-finger tap sends a
+primary click at Halo's cursor. Two fingers landing together and lifting without
+moving send one secondary click (grenade, not zoom). This is not a double tap.
+These gestures do not fire after drags, cancellations or three-finger gestures.
+They are separate from the new gameplay buttons.
 
 ## Mouse and trackpad
 
@@ -97,8 +118,10 @@ every quick tap registers in play still needs hardware acceptance.
    whether quick single clicks register at 60 and 120 Hz.
 3. Magic Keyboard trackpad: with Tap to Click / secondary click enabled and
    disabled; whether it appears as a GameController mouse; lock or fallback.
-4. Touch: drag aims; one-finger tap fires once; two-finger tap throws one
-   grenade; no shot after drags, cancels or three fingers.
+4. Touch-only gameplay: move + aim + held fire together; exercise every action,
+   pause/resume and portrait/landscape safe areas. Connect/disconnect a controller
+   and physical keyboard while holding movement/fire; no held input may remain.
+   In menus and keyboard/touch mode, check the original drag and click gestures.
 5. ⌘L release/recapture; overlay Library/Settings/Pause by touch and mouse;
    recapture click does not fire.
 6. Control Center, app switcher, notification, Settings sheet, Library and

@@ -10,7 +10,8 @@
  * Exactly one keyboard source and one pointer source are selected at a time;
  * events from any other source are rejected, so GCKeyboard/GCMouse and the
  * UIKit fallbacks cannot inject the same press twice. Direct touch is its own
- * source and only aims or sends click pulses.
+ * source for menu aim/click pulses. Gameplay touch controls additionally use
+ * an isolated held-action lane, leaving hardware ownership unchanged.
  *
  * Every ownership change, explicit release and source change is a fence: held
  * keys/buttons, pulses and deltas are dropped and the generation advances.
@@ -20,6 +21,7 @@
 #ifndef HALO_DEVICE_INPUT_H
 #define HALO_DEVICE_INPUT_H
 #include <stdint.h>
+#include "touch_action.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -85,6 +87,17 @@ int host_device_input_click(int source, int button);
 int host_device_input_button_cancel(int source, int button);
 /* Relative motion in mouse counts, +x right, +y down (DirectInput). */
 int host_device_input_motion(int source, double dx, double dy);
+
+/* Gameplay-only direct-touch holds. This independent lane never replaces the
+ * selected keyboard or pointer sources. Disabling releases only its own
+ * keys/buttons/motion and fences buffered touch downs. Native menus and app
+ * leases refuse the lane even before the UI notices a transition. */
+void host_device_input_touch_enable(int enabled);
+void host_device_input_touch_release(void);
+int host_device_input_touch_action(uint32_t action, int down);
+/* Last input-pump binding snapshot: unsupported/unbound actions stay disabled. */
+uint32_t host_device_input_touch_actions_available(void);
+int host_device_input_touch_motion(double dx, double dy);
 
 uint64_t host_device_input_generation(void);
 /* host_dinput_keyboard_state plus this source's keys (may be NULL) and their

@@ -1,10 +1,10 @@
 {
-  "version": "1.0.27",
+  "version": "1.0.28",
   "formatVersion": 1,
   "license": "MIT for original project code; third-party and asset notices retained",
   "scope": "Source, documentation, generated app artwork and public configuration. Retail game content, translated executable output, private registration, saves, signed apps and runtime mod packs are excluded.",
-  "fileCount": 586,
-  "totalBytes": 13459946,
+  "fileCount": 592,
+  "totalBytes": 13514173,
   "files": [
     {
       "path": ".github/ISSUE_TEMPLATE/bug_report.yml",
@@ -18,8 +18,8 @@
     },
     {
       "path": ".github/workflows/source-checks.yml",
-      "bytes": 2165,
-      "sha256": "9e2949ccb68e8a70c9b0dd1031748cdc382d598208ab510a980786a8ee7b8291"
+      "bytes": 2247,
+      "sha256": "bd4ea3e9ef65f646cf2ff54d70654d3509fa8aa4698641b6d84c6fe32c99c315"
     },
     {
       "path": ".gitignore",
@@ -38,8 +38,8 @@
     },
     {
       "path": "CHANGELOG.md",
-      "bytes": 8047,
-      "sha256": "3bb02ef30022e723056c2bdceeabfeaeb536150ad50955832c18533599bf9bd6"
+      "bytes": 8830,
+      "sha256": "af4d2ee6769fa7759f92324d29f888efc622b7e20b34170cf5b610d759a87929"
     },
     {
       "path": "CONTRIBUTING.md",
@@ -53,8 +53,8 @@
     },
     {
       "path": "README.md",
-      "bytes": 4743,
-      "sha256": "6e0411b96cdf1458077cd9b0da578313a3223656cc8871f65c27ebaadba57c99"
+      "bytes": 4783,
+      "sha256": "6085eb192ecd9250920f7fb0dbdd8048c560099145c9f2f5f63665cd5b9f1289"
     },
     {
       "path": "THIRD_PARTY.md",
@@ -64,7 +64,7 @@
     {
       "path": "VERSION",
       "bytes": 7,
-      "sha256": "9f07c8557e8d6636d33aeec5959d505adc55ed870127069cee03be4ea0f63970"
+      "sha256": "497165511148a62a6815b0fc5cfe626b8909d8d3a6a31b9470820a37096f2310"
     },
     {
       "path": "decompilation/c9acf0c46954/extra-function-entries.txt",
@@ -93,8 +93,8 @@
     },
     {
       "path": "docs/BUILDING.md",
-      "bytes": 14139,
-      "sha256": "4b0e522157f5dc9a9584070db9c57ea3b02eb8c91100271f32960dd646d5bd7a"
+      "bytes": 14166,
+      "sha256": "cc0d2df5fc2e7494e0bc61b9cdd9edb8ff0f9d2699329dc940fa19cee76d2505"
     },
     {
       "path": "docs/COMPLETE_RELEASE.md",
@@ -103,13 +103,13 @@
     },
     {
       "path": "docs/CONTROLS.md",
-      "bytes": 13758,
-      "sha256": "4d40a7bffd015b642339f9aabfb83d47b2259dec1332b4bbdc201209ce068d05"
+      "bytes": 15645,
+      "sha256": "c4c3952b99506d98be3c2dbef5dfc6f72799e901a42cafa97343be0c6ba6404c"
     },
     {
       "path": "docs/FEATURES.md",
-      "bytes": 2010,
-      "sha256": "9a74147a191d67f2bb8146b47a19ad63cdd6de0467653dafd456be68127a58b4"
+      "bytes": 1967,
+      "sha256": "0a94e2101dd0cd2059d767c547dcb2830e879b0988abeca5a11c907c0c3416d2"
     },
     {
       "path": "docs/GRAPHICS_QUALITY.md",
@@ -118,8 +118,8 @@
     },
     {
       "path": "docs/KNOWN_ISSUES.md",
-      "bytes": 3290,
-      "sha256": "cdf308ea1c150a117179f1d8d1028bade0cba602ed5d28b80e6e097642519f05"
+      "bytes": 3319,
+      "sha256": "50849b2efc983db3a96c73fb632ba31d63f07f4d942759f3645a0b4d02ebf62e"
     },
     {
       "path": "docs/RELEASING.md",
@@ -133,8 +133,8 @@
     },
     {
       "path": "docs/VALIDATION.md",
-      "bytes": 19849,
-      "sha256": "abae20316550aebb66747fb3373fd8ce74a8753bbf13c3300a7e2293faed598a"
+      "bytes": 21956,
+      "sha256": "6403914f3c6c919eea7093734ac28a1658467269fa9dee797d0f0406b4a17a68"
     },
     {
       "path": "docs/assets/117-plasma-icon.json",
@@ -223,13 +223,13 @@
     },
     {
       "path": "native/EngineHost/device_input.h",
-      "bytes": 5413,
-      "sha256": "0fe6cf08ad654a5e374bdb0af94880d4083837c7a2514ca8aaac2ef42f1b4114"
+      "bytes": 6196,
+      "sha256": "4e183ea15641924d04f3ee74f25f5cfa968847b9ece5ae625cfc6685d3a0df74"
     },
     {
       "path": "native/EngineHost/device_input.inc",
-      "bytes": 15737,
-      "sha256": "a4dc726dfc1c51d28b640fef4fddc0247f2e40d7467b9ad346dc1473c6652177"
+      "bytes": 21438,
+      "sha256": "02fd4f52504f3dc8a97bd4e6253080ff6662a7071eaf824337fffbd0e4b96f3d"
     },
     {
       "path": "native/EngineHost/dinput8.c",
@@ -938,13 +938,18 @@
     },
     {
       "path": "native/EngineHost/tests/test_device_input.m",
-      "bytes": 32182,
-      "sha256": "cf350b66ebfeb8413f9c7124580522e2c46c7a918ab77d0a06f0adeca9e5ddb1"
+      "bytes": 34823,
+      "sha256": "10044ef1fc8a331d01a8fac9c7f8c29f04224cca44f8de591697ab44047d5af1"
     },
     {
       "path": "native/EngineHost/tests/test_device_messages.c",
       "bytes": 4829,
       "sha256": "d3300a3365f7c8940e5d322b0deb3d56bd846a67a978226c905119cf42868157"
+    },
+    {
+      "path": "native/EngineHost/tests/test_device_touch_controls.c",
+      "bytes": 8166,
+      "sha256": "788bb2f0c63b87cf9e4e47353d6ff723319a943b1b5abb51ecadda40d62ec7b7"
     },
     {
       "path": "native/EngineHost/tests/test_dinput_lifecycle.c",
@@ -1627,6 +1632,11 @@
       "sha256": "516a3b85020a653e4591ab0a44624f774df96c28fa37769c58b99cf22bf80d9a"
     },
     {
+      "path": "native/EngineHost/touch_action.h",
+      "bytes": 2793,
+      "sha256": "3d25615f23c847880f375b74b22286309fe67f1a58c6329ffeb788221d1a34f9"
+    },
+    {
       "path": "native/EngineHost/vertex_shader_cpu.h",
       "bytes": 5472,
       "sha256": "fbd37053efa4cef30c15b41664b74ed171883369610bf8ef392ff91c33740e91"
@@ -1663,8 +1673,8 @@
     },
     {
       "path": "native/EnginePad/INPUT.md",
-      "bytes": 5835,
-      "sha256": "6571241dc867fa221c76591858e8c1351f9cfb47fb891017cd550837ac7d19be"
+      "bytes": 7253,
+      "sha256": "879eb73736139643c95eca4cd7ec08abc6b46434f89ee8aa63436ea0ad136638"
     },
     {
       "path": "native/EnginePad/Info.plist",
@@ -1673,8 +1683,8 @@
     },
     {
       "path": "native/EnginePad/README.md",
-      "bytes": 5365,
-      "sha256": "bc908cf21dd448a5d227ced55e6cb517370270085d0c9cdbaf10a46c79847508"
+      "bytes": 5399,
+      "sha256": "9d59d4d4ddcd817456a4179a11c848a5dbc037d8b34d7692ebace4d8cf5293c0"
     },
     {
       "path": "native/EnginePad/Resources/Assets.xcassets/AppIcon.appiconset/117-plasma.png",
@@ -1708,18 +1718,18 @@
     },
     {
       "path": "native/EnginePad/Sources/EnginePadInputPolicy.swift",
-      "bytes": 5879,
-      "sha256": "10a5825d596f382e1e4a4ca111f469e1db12bf32340545b6e12ec5c440917df6"
+      "bytes": 5952,
+      "sha256": "948482c6100a6f847cf7e01fe2d516519f3ca27dde504dfe4a06b13c101a7e06"
     },
     {
       "path": "native/EnginePad/Sources/EnginePadInputRouter.swift",
-      "bytes": 12456,
-      "sha256": "295c403f56e0883ca2ea2c122731a4397361d09f014359ecc665fbc6403374a1"
+      "bytes": 15428,
+      "sha256": "7f0e3c380b8dc71a1ba544f43b6ba5baf043ac88431f03a8bdadfb10592408d4"
     },
     {
       "path": "native/EnginePad/Sources/EnginePadInputSession.swift",
-      "bytes": 14824,
-      "sha256": "7f105e332d5fd137a14175794d39fb80cc861ddf54bb25b25ff1288527604068"
+      "bytes": 14964,
+      "sha256": "907f7b0b716a751ef9e1ef04b053639f0d4524df884b24126b5777b22f8c8561"
     },
     {
       "path": "native/EnginePad/Sources/EnginePadInputSurface.swift",
@@ -1728,8 +1738,8 @@
     },
     {
       "path": "native/EnginePad/Sources/EnginePadModel.swift",
-      "bytes": 2730,
-      "sha256": "253b89aba817c47d5b8568cb91e6daaf792058618ed3335282bcb932166a1683"
+      "bytes": 3031,
+      "sha256": "20b656fd93c4e2ed8adca592fee4e216e0df989e0874fb6815e436bf4e0c40c5"
     },
     {
       "path": "native/EnginePad/Sources/EnginePadPresentationState.swift",
@@ -1747,14 +1757,29 @@
       "sha256": "5788620f12b8b0c2bc604a2be21d1f988bf811a4633e4781452d90403f06a5c7"
     },
     {
+      "path": "native/EnginePad/Sources/EnginePadTouchControls.swift",
+      "bytes": 6555,
+      "sha256": "a3e721ea72aede4747ea9b1b462dbab864ef33f8fa3622eeed6de1874b0fa311"
+    },
+    {
+      "path": "native/EnginePad/Sources/EnginePadTouchLayout.swift",
+      "bytes": 2346,
+      "sha256": "775f00b3c1857ffdcd072f432916024f207030c7dd141c35bea474a8e4c9514a"
+    },
+    {
+      "path": "native/EnginePad/Sources/EnginePadTouchOverlay.swift",
+      "bytes": 8738,
+      "sha256": "8119d00cf7ce536584f6004f8739cc5b79687dfa2e2f3854f4fca94d6fc529ba"
+    },
+    {
       "path": "native/EnginePad/Sources/MasterCheefPadApp.swift",
-      "bytes": 21040,
-      "sha256": "a5d7e451ecd90bb92878c11620052fb12e4234149a0245406a679925815dfa99"
+      "bytes": 21180,
+      "sha256": "9c8dfb7036945464fe558fa78668cbe89d6a4581eb7b1e45e27eae8b942b4d42"
     },
     {
       "path": "native/EnginePad/Tests/EnginePadInputPolicyValidation.swift",
       "bytes": 10428,
-      "sha256": "fcaff42b7da6793c7d98c8bc283d416bb5c089f78b71f435ecd74b92de7d9bee"
+      "sha256": "731367c7523004632ad6b3cad2c7150be508d2216f08db6e80ad40c063d0a565"
     },
     {
       "path": "native/EnginePad/Tests/EnginePadInputSessionValidation.swift",
@@ -1762,9 +1787,14 @@
       "sha256": "094e2a3ad29dd05e00add81a40dfd611066f0d54c60d18edf617206e89419a20"
     },
     {
+      "path": "native/EnginePad/Tests/EnginePadTouchControlsValidation.swift",
+      "bytes": 6150,
+      "sha256": "8d4b23909c8f798c2a74b2c05fac190cd06331db46b4fc1458a474b0d8e33f0a"
+    },
+    {
       "path": "native/EnginePad/project.yml",
       "bytes": 5031,
-      "sha256": "629e8a9d4894a47e9024a0f6ff58d710e08e5436a60a6a813315ad04ead0af38"
+      "sha256": "54c6b528bfdbb234c52680d582943a1141caa00cdb9d540f93eddeab5191c6d4"
     },
     {
       "path": "native/EngineReuse/engine_arm64_fenv_prototype.h",
@@ -2484,7 +2514,7 @@
     {
       "path": "native/EngineVision/project.yml",
       "bytes": 4971,
-      "sha256": "d77015e5fa340ff1cb49b00d87a20ee2715c0f596cd63bd36c65a89955fde35b"
+      "sha256": "0c30b013a374854fa2538cdeff769b751d81fda23f2d44a7b53a3091a8113d5f"
     },
     {
       "path": "native/Tests/EngineRuntimeContract.c",
@@ -2734,7 +2764,7 @@
     {
       "path": "tools/build_engine_vision.py",
       "bytes": 16857,
-      "sha256": "fb500b1f9bd7b4dc87d9d7032023493f02a8378b72a92c8ed5390021a8539952"
+      "sha256": "4a6062b094566268242bddcb75c580317bf2c1e8c2296a160aa9f9fa56181d73"
     },
     {
       "path": "tools/build_engine_vision_simulator.py",
@@ -2863,8 +2893,8 @@
     },
     {
       "path": "tools/run_source_checks.py",
-      "bytes": 44226,
-      "sha256": "85c589c653b27d62a99e2d6b400f958a46a26cee7235d69037748de142550536"
+      "bytes": 44590,
+      "sha256": "445411baf325eb74be18d544d3d2da10ec3a62757ac03f6eccc720faa6bbf3e9"
     },
     {
       "path": "tools/setup_halo.py",
@@ -2874,7 +2904,7 @@
     {
       "path": "tools/test_build_engine_ipad.py",
       "bytes": 14453,
-      "sha256": "17d38c36d5826d283e40121f2ac98f8d2b55cf31ac441d0d6b797a9923ac2831"
+      "sha256": "76d80dd802e8fcac754958ca8040a1c8a6cf122eee3df738393a7e99c4fc35cd"
     },
     {
       "path": "tools/test_censhine_import.py",

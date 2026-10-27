@@ -11,6 +11,20 @@ import Combine
 final class EnginePadInputRouter: ObservableObject {
     @Published private(set) var keyboardConnected = false
     @Published private(set) var mouseConnected = false
+    @Published private(set) var controllerConnected = false
+    @Published private(set) var touchControlsEnabled = false
+    @Published private(set) var touchActionsAvailable: UInt32 = 0
+    func touchActionAvailable(_ action: EnginePadTouchControls.Action) -> Bool {
+        action.actions.contains { touchActionsAvailable & (1 << $0) != 0 }
+    }
+    func refreshTouchBindings() {
+        let available = host_device_input_touch_actions_available()
+        if available != touchActionsAvailable { touchActionsAvailable = available }
+    }
+    private var nativeMenuActive = true
+    private var touchControls = EnginePadTouchControls()
+    var touchMovementOffset: CGPoint { touchControls.movementOffset }
+    var touchHeldActions: Set<EnginePadTouchControls.Action> { touchControls.heldActions }
     /// A UIKit pointer (for example a trackpad that is not a GCMouse) was used.
     @Published private(set) var pointerSeen = false
     /// Resolved scene state from UIPointerLockState, not the preference.
@@ -35,7 +49,7 @@ final class EnginePadInputRouter: ObservableObject {
                      && EnginePadInputSource.touch.rawValue == Int32(HOST_DEVICE_TOUCH)
                      && EnginePadInputSession.buttonCount == Int(HOST_DEVICE_BUTTON_COUNT))
         let center = NotificationCenter.default
-        for name in [Notification.Name.GCKeyboardDidConnect, .GCKeyboardDidDisconnect, .GCMouseDidConnect, .GCMouseDidDisconnect] {
+        for name in [Notification.Name.GCKeyboardDidConnect, .GCKeyboardDidDisconnect, .GCMouseDidConnect, .GCMouseDidDisconnect, .GCControllerDidConnect, .GCControllerDidDisconnect] {
             observers.append(center.addObserver(forName: name, object: nil, queue: .main) { [weak self] _ in
                 MainActor.assumeIsolated { self?.devicesChanged() }
             })
@@ -65,6 +79,11 @@ final class EnginePadInputRouter: ObservableObject {
     /// The game is shown with no app sheet, importer or alert over it.
     func update(gameVisible: Bool) { run(session.update(gameVisible: gameVisible)) }
     func update(engineActive: Bool) { if engineActive != session.engineActive { run(session.update(engineActive: engineActive)) } }
+    func update(nativeMenuActive: Bool) {
+        guard self.nativeMenuActive != nativeMenuActive else { return }
+        self.nativeMenuActive = nativeMenuActive
+        reconcileTouchControls()
+    }
 
     func surfaceAttached(_ view: EnginePadInputSurface) {
         surface = view
@@ -92,7 +111,10 @@ final class EnginePadInputRouter: ObservableObject {
 
     func togglePointerCapture() { run(session.togglePointerCapture()) }
     /// The overlay Pause button: one native Escape press (Halo's pause/back).
-    func sendPause() { run(session.pause()) }
+    func sendPause() {
+        cancelTouchControls()
+        run(session.pause())
+    }
 
     private func adopt(_ windowScene: UIScene?) {
         guard let windowScene else { return }
@@ -114,6 +136,7 @@ final class EnginePadInputRouter: ObservableObject {
 
     private func devicesChanged() {
         let keyboard = GCKeyboard.coalesced, mice = GCMouse.mice()
+        controllerConnected = GCController.controllers().contains { $0.extendedGamepad != nil }
         run(session.devicesChanged(keyboard: keyboard != nil, mouse: !mice.isEmpty))
         // New handlers carry the new device generation; any callback still
         // queued from an earlier one is ignored by the session.
@@ -188,10 +211,47 @@ final class EnginePadInputRouter: ObservableObject {
     func touchEnded(_ id: Int, at point: CGPoint, time: TimeInterval) { run(session.touchEnded(id, at: point, time: time)) }
     func touchCancelled(_ id: Int) { run(session.touchCancelled(id)) }
 
+    // MARK: Gameplay-only touch fallback
+
+    func touchControlBegan(_ id: Int, target: EnginePadTouchControls.Target, at point: CGPoint) {
+        if case let .action(action) = target, !touchActionAvailable(action) { return }
+        runTouch(touchControls.began(id, target: target, at: point))
+    }
+    func touchControlMoved(_ id: Int, to point: CGPoint) { runTouch(touchControls.moved(id, to: point)) }
+    func touchControlEnded(_ id: Int) { runTouch(touchControls.ended(id)) }
+    func cancelTouchControls() { runTouch(touchControls.cancelAll()) }
+
+    private func reconcileTouchControls() {
+        let enabled = EnginePadTouchControls.available(gameOwnsInput: session.gameOwnsInput,
+            keyboardConnected: session.keyboardConnected, controllerConnected: controllerConnected,
+            nativeMenuActive: nativeMenuActive)
+        if enabled != touchControlsEnabled {
+            session.cancelDirectTouch()
+            runTouch(touchControls.update(enabled: enabled))
+            touchControlsEnabled = enabled
+        }
+    }
+    private func runTouch(_ commands: [EnginePadTouchControls.Command]) {
+        for command in commands {
+            switch command {
+            case let .enabled(value): host_device_input_touch_enable(value ? 1 : 0)
+            case .releaseAll: host_device_input_touch_release()
+            case let .action(id, down): _ = host_device_input_touch_action(UInt32(id), down ? 1 : 0)
+            case let .motion(dx, dy): _ = host_device_input_touch_motion(dx, dy)
+            }
+        }
+    }
+
     // MARK: Command execution
 
     private func run(_ commands: [EnginePadInputSession.Command]) {
         for command in commands {
+            switch command {
+            case .setGameOwns, .release, .select:
+                session.cancelDirectTouch()
+                cancelTouchControls()
+            default: break
+            }
             switch command {
             case let .setGameOwns(owns): host_device_input_set_game_owns(owns ? 1 : 0)
             case .release: host_device_input_release()
@@ -220,5 +280,6 @@ final class EnginePadInputRouter: ObservableObject {
         if pointerLocked != session.pointerLocked { pointerLocked = session.pointerLocked }
         if pointerReleased != session.pointerReleased { pointerReleased = session.pointerReleased }
         if gameOwnsInput != session.gameOwnsInput { gameOwnsInput = session.gameOwnsInput }
+        reconcileTouchControls()
     }
 }

@@ -57,6 +57,8 @@ typedef struct {
     uint32_t tick; int tick_valid; uint64_t start_ns, start_pump;
 } DevicePulse;
 
+typedef struct { DevicePulse pulse; HostTouchBinding binding; } DeviceTouchAction;
+
 typedef struct {
     int game_owns, keyboard_source, pointer_source;
     uint64_t generation, accepted, rejected, fences, keyboard_reads, mouse_reads;
@@ -64,11 +66,21 @@ typedef struct {
     uint8_t key_count[256];   /* held usages per DIK */
     DevicePulse key[256], button[HOST_DEVICE_BUTTON_COUNT];
     double dx, dy;            /* pending counts, fractional remainder carried */
+    int touch_enabled;
+    DeviceTouchAction touch_action[HOST_TOUCH_ACTION_COUNT];
+    uint32_t touch_available;
+    int touch_bindings_ready;
+    double touch_dx, touch_dy;
 } DeviceInput;
 static pthread_mutex_t device_lock = PTHREAD_MUTEX_INITIALIZER;
 static DeviceInput device = { .generation = 1 };
 
+static void device_touch_clear_locked(void) {
+    memset(device.touch_action, 0, sizeof device.touch_action);
+    device.touch_dx = device.touch_dy = 0;
+}
 static void device_fence_locked(void) {
+    device_touch_clear_locked();
     memset(device.usage_dik, 0, sizeof device.usage_dik);
     memset(device.key_count, 0, sizeof device.key_count);
     memset(device.key, 0, sizeof device.key);
@@ -78,7 +90,17 @@ static void device_fence_locked(void) {
     device.fences++;
 }
 static int pulse_active(const DevicePulse *p) { return p->held || p->pending || p->phase != PULSE_IDLE; }
+static int device_touch_has_state_locked(void) {
+    for (int a = 0; a < HOST_TOUCH_ACTION_COUNT; a++) if (pulse_active(&device.touch_action[a].pulse)) return 1;
+    return device.touch_dx != 0 || device.touch_dy != 0;
+}
+static void device_touch_fence_locked(void) {
+    device_touch_clear_locked();
+    if (++device.generation == 0) ++device.generation;
+    device.fences++;
+}
 static int device_has_state_locked(void) {
+    if (device_touch_has_state_locked()) return 1;
     for (int i = 0; i < 256; i++) if (pulse_active(&device.key[i])) return 1;
     for (int b = 0; b < HOST_DEVICE_BUTTON_COUNT; b++) if (pulse_active(&device.button[b])) return 1;
     return device.dx != 0 || device.dy != 0;
@@ -225,6 +247,92 @@ int host_device_input_motion(int source, double dx, double dy) {
     host_prompt_note_motion(dx, dy, host_monotonic_ns());
     return 1;
 }
+/* The original menu state is checked before the lock, like the app lease. */
+int host_dinput_menu_active(void);
+void host_device_input_touch_enable(int enabled) {
+    pthread_mutex_lock(&device_lock);
+    enabled = enabled != 0;
+    if (enabled != device.touch_enabled) {
+        device.touch_enabled = enabled;
+        device.touch_available = 0;
+        device.touch_bindings_ready = 0;
+        device_touch_fence_locked();
+    }
+    pthread_mutex_unlock(&device_lock);
+}
+void host_device_input_touch_release(void) {
+    pthread_mutex_lock(&device_lock);
+    device_touch_fence_locked();
+    pthread_mutex_unlock(&device_lock);
+}
+static int device_touch_hold(DevicePulse *p, int down, int admitted) {
+    if (!down) {
+        if (!p->held) return device_reject_locked();
+        pulse_release_hold(p);
+        return device_accept_locked();
+    }
+    if (!admitted || !device.touch_enabled || p->held || !pulse_queue(p)) return device_reject_locked();
+    p->held = 1;
+    return device_accept_locked();
+}
+int host_device_input_touch_action(uint32_t action, int down) {
+    int lease = hostgc_app_input_lease_active(), menu = host_dinput_menu_active();
+    pthread_mutex_lock(&device_lock);
+    if (!host_touch_action_supported(action)) return device_reject_locked();
+    /* The first press after enabling may beat the first pump. Queue semantic
+     * intent until bindings have been sampled; the pump drops unbound actions. */
+    return device_touch_hold(&device.touch_action[action].pulse, down,
+        device_open_locked(lease) && !menu &&
+        (!device.touch_bindings_ready || (device.touch_available & (1u << action)) != 0));
+}
+uint32_t host_device_input_touch_actions_available(void) {
+    pthread_mutex_lock(&device_lock); uint32_t mask = device.touch_available;
+    pthread_mutex_unlock(&device_lock); return mask;
+}
+/* Binding tables are sampled on this input-pump thread, never in UIKit input
+ * callbacks. Fixed admitted1.10 addresses only; no guest pointer chasing. */
+static uint16_t device_touch_read16(uint32_t address, void *context) {
+    (void)context; return G16(address);
+}
+static void device_touch_resolve_locked(void) {
+    if (!device.touch_enabled || !engine_flat_base) {
+        device.touch_available = 0;
+        device.touch_bindings_ready = device.touch_enabled;
+        if (device_touch_has_state_locked()) device_touch_fence_locked();
+        return;
+    }
+    uint32_t available = 0;
+    for (unsigned a=0; a<HOST_TOUCH_ACTION_COUNT; ++a) {
+        HostTouchBinding live = host_touch_resolve(a, engine_flat_base ? device_touch_read16 : NULL, NULL);
+        if (live.kind) available |= 1u << a;
+        DeviceTouchAction *item = &device.touch_action[a];
+        if (!pulse_active(&item->pulse)) item->binding = (HostTouchBinding){0,0};
+        else if (!item->binding.kind) {
+            item->binding = live;
+            if (!live.kind) memset(&item->pulse, 0, sizeof item->pulse);
+        }
+    }
+    device.touch_available = available;
+    device.touch_bindings_ready = 1;
+}
+/* Independent action pulses are ORed, so releasing one action cannot release
+ * another pinned to the same emitter after a live profile mapping change. */
+static void device_touch_read_locked(uint8_t *out, int kind, const DeviceClock *clock, int consume) {
+    for (int a=0; a<HOST_TOUCH_ACTION_COUNT; ++a) {
+        DeviceTouchAction *item = &device.touch_action[a];
+        if (item->binding.kind == kind && pulse_read(&item->pulse, clock, consume))
+            out[item->binding.index] |= 0x80;
+    }
+}
+int host_device_input_touch_motion(double dx, double dy) {
+    int lease = hostgc_app_input_lease_active(), menu = host_dinput_menu_active();
+    pthread_mutex_lock(&device_lock);
+    if (!device.touch_enabled || !device_open_locked(lease) || menu || !isfinite(dx) || !isfinite(dy))
+        return device_reject_locked();
+    device.touch_dx = device_bound(device.touch_dx + dx);
+    device.touch_dy = device_bound(device.touch_dy + dy);
+    return device_accept_locked();
+}
 uint64_t host_device_input_generation(void) {
     pthread_mutex_lock(&device_lock); uint64_t g = device.generation; pthread_mutex_unlock(&device_lock); return g;
 }
@@ -237,6 +345,10 @@ void host_device_input_stats(HostDeviceInputStats *out) {
     out->fences = device.fences; out->keyboard_reads = device.keyboard_reads; out->mouse_reads = device.mouse_reads;
     for (int i = 0; i < 256; i++) out->keys_down += pulse_active(&device.key[i]);
     for (int b = 0; b < HOST_DEVICE_BUTTON_COUNT; b++) out->buttons_down += pulse_active(&device.button[b]);
+    for (int a=0; a<HOST_TOUCH_ACTION_COUNT; ++a) if (pulse_active(&device.touch_action[a].pulse)) {
+        if (device.touch_action[a].binding.kind == HOST_TOUCH_EMITTER_BUTTON) out->buttons_down++;
+        else out->keys_down++;
+    }
     pthread_mutex_unlock(&device_lock);
 }
 
@@ -248,10 +360,13 @@ static uint64_t device_input_keyboard(uint8_t keys[256], const DeviceClock *cloc
     memset(keys, 0, 256);
     pthread_mutex_lock(&device_lock);
     DeviceClock clock = *clock_in; clock.pump = device.mouse_reads;
+    if (clock.menu && device_touch_has_state_locked()) device_touch_fence_locked();
+    device_touch_resolve_locked();
     if (!device_open_locked(lease)) {
         if (device_has_state_locked()) device_fence_locked();   /* lease raced ahead of the app's own fence */
     } else {
         for (int i = 0; i < 256; i++) if (pulse_read(&device.key[i], &clock, consume)) keys[i] = 0x80;
+        device_touch_read_locked(keys, HOST_TOUCH_EMITTER_KEY, &clock, consume);
         if (consume) device.keyboard_reads++;
     }
     uint64_t generation = device.generation;
@@ -266,13 +381,19 @@ static void device_input_mouse(int32_t *dx, int32_t *dy, uint8_t buttons[HOST_DE
     *dx = *dy = 0; memset(buttons, 0, HOST_DEVICE_BUTTON_COUNT);
     pthread_mutex_lock(&device_lock);
     DeviceClock clock = *clock_in; clock.pump = device.mouse_reads;
+    if (clock.menu && device_touch_has_state_locked()) device_touch_fence_locked();
+    device_touch_resolve_locked();
     if (!device_open_locked(lease)) {
         if (device_has_state_locked()) device_fence_locked();
     } else {
-        *dx = (int32_t)trunc(device.dx); *dy = (int32_t)trunc(device.dy);
-        device.dx -= *dx; device.dy -= *dy;
+        int32_t hx = (int32_t)trunc(device.dx), hy = (int32_t)trunc(device.dy);
+        int32_t tx = (int32_t)trunc(device.touch_dx), ty = (int32_t)trunc(device.touch_dy);
+        *dx = hx + tx; *dy = hy + ty;
+        device.dx -= hx; device.dy -= hy;
+        device.touch_dx -= tx; device.touch_dy -= ty;
         for (int b = 0; b < HOST_DEVICE_BUTTON_COUNT; b++)
             if (pulse_read(&device.button[b], &clock, 1)) buttons[b] = 0x80;
+        device_touch_read_locked(buttons, HOST_TOUCH_EMITTER_BUTTON, &clock, 1);
     }
     device.mouse_reads++;
     pthread_mutex_unlock(&device_lock);

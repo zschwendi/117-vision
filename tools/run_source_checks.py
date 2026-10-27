@@ -141,6 +141,9 @@ SWIFT_CHECKS = {
     'pad-input-policy': (['-parse-as-library', '-swift-version', '5'],
                          [PAD / 'Sources/EnginePadInputPolicy.swift', PAD / 'Sources/EnginePadPresentationState.swift',
                           PAD / 'Tests/EnginePadInputPolicyValidation.swift']),
+    'pad-touch-controls': (['-parse-as-library', '-swift-version', '5'],
+                           [PAD / 'Sources/EnginePadTouchControls.swift', PAD / 'Sources/EnginePadTouchLayout.swift',
+                            PAD / 'Tests/EnginePadTouchControlsValidation.swift']),
     'pad-input-session': (['-parse-as-library', '-swift-version', '5'],
                           [PAD / 'Sources/EnginePadInputPolicy.swift', PAD / 'Sources/EnginePadInputSession.swift',
                            PAD / 'Tests/EnginePadInputSessionValidation.swift']),
@@ -210,6 +213,7 @@ def main():
     cases = [(name, []) for name in ('frame_pacer', 'panorama_budget', 'pointer_step', 'pointer_input', 'panorama_epoch', 'panorama_gpu_carry', 'panorama_lifecycle', 'panorama_pose_export', 'panorama_camera_cut', 'panorama_motion_budget', 'panorama_graphics', 'texture_mips', 'dinput_lifecycle', 'winsock', 'multiplayer_update', 'x87_nearest_fast_path', 'engine_direct_calls', 'controller_link_guard')]
     cases = [(name, [HOST / 'halo_settings.c'] if name == 'dinput_lifecycle' else extra) for name, extra in cases]
     cases.append(('mobile_graphics', ['-std=c11', '-Wall', '-Wextra', '-Werror']))
+    cases.append(('device_touch_controls', ['-std=c11', '-Wall', '-Wextra', '-Werror']))
     cases.append(('frame_limit_routing', ['-DEXPECT_ROUTED=0']))
     cases.append(('input_prompt', [*STRICT, '-fno-sanitize-recover=undefined']))
     cases.append(('sense_prompt_context', ['-fno-sanitize-recover=undefined']))

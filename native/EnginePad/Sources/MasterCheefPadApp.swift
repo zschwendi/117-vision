@@ -129,6 +129,9 @@ private struct EnginePadLibraryView: View {
                 Color.black.ignoresSafeArea()
                 EngineFrameView().ignoresSafeArea()
                 EnginePadInputSurfaceView(router: input).ignoresSafeArea()
+                if input.touchControlsEnabled {
+                    EnginePadTouchOverlay(input: input).ignoresSafeArea()
+                }
                 HStack {
                     Button { showingGame = false } label: { Label("Library", systemImage: "square.grid.2x2") }
                     Button { showingGameSettings = true } label: { Label("Settings", systemImage: "slider.horizontal.3") }

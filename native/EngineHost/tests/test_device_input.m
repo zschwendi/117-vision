@@ -78,11 +78,11 @@ static int key_event_one(uint32_t *ofs,uint32_t *data) {
     S32(0x5800,1);CHECK(call(shim_dev_10,5,keyboard->guest,16u,0x5000u,0x5800u,0u)==DI_OK);
     if(!G32(0x5800))return 0;*ofs=G32(0x5000);*data=G32(0x5004);return 1;
 }
-typedef struct { int32_t dx,dy,dz; uint8_t b[4]; } MouseRead;
-/* Halo's mouse read: GetDeviceState(DIMOUSESTATE, 16 bytes). */
+typedef struct { int32_t dx,dy,dz; uint8_t b[8]; } MouseRead;
+/* Halo's actual mouse read at00490911: GetDeviceState(DIMOUSESTATE2,20 bytes). */
 static MouseRead mouse_state(void) {
-    CHECK(call(shim_dev_9,3,mouse->guest,16u,0x3000u)==DI_OK);
-    MouseRead r={(int32_t)G32(0x3000),(int32_t)G32(0x3004),(int32_t)G32(0x3008),{G8(0x300C),G8(0x300D),G8(0x300E),G8(0x300F)}};
+    CHECK(call(shim_dev_9,3,mouse->guest,20u,0x3000u)==DI_OK);
+    MouseRead r={(int32_t)G32(0x3000),(int32_t)G32(0x3004),(int32_t)G32(0x3008),{G8(0x300C),G8(0x300D),G8(0x300E),G8(0x300F),G8(0x3010),G8(0x3011),G8(0x3012),G8(0x3013)}};
     return r;
 }
 static void game(int owns) {host_device_input_set_game_owns(owns);}
@@ -451,6 +451,49 @@ static void queue_invalidation(void) {
     S16(0x718FA6,0);drain_keys();no_controller();
 }
 
+/* Touch-only cancellation through the actual buffered GetDeviceData path.
+ * A pending independent hardware quick tap, and same-key hardware takeover,
+ * must survive while queued touch downs disappear. */
+static void touch_control_queue_isolation(void) {
+    no_controller(); S8(0x718FC9,0); S16(0x718FA6,0); S16(0x719720,0);
+    memset(GPTR(0x0065BD58),0xff,512); memset(GPTR(0x00710330),0xff,0x6D*2);
+    memset(GPTR(0x0071040A),0xff,16);
+    S16(0x0065BD58+2*0x39,0x39); S16(0x00710330+2*0x39,HOST_TOUCH_JUMP);
+    S16(0x0065BD58+2*0x11,0x11); S16(0x00710330+2*0x11,HOST_TOUCH_FORWARD);
+    S16(0x0071040A+2*5,HOST_TOUCH_FIRE); /* rebound sixth mouse button */
+    game(1); gameplay_clock(1); host_device_input_select(KB_GC,PT_GC);
+    host_device_input_release(); host_device_input_touch_enable(1); drain_keys();
+    CHECK(host_device_input_touch_action(HOST_TOUCH_JUMP,1));
+    CHECK(host_device_input_key(KB_GC,U_W,1,0));
+    CHECK(host_device_input_key(KB_GC,U_W,0,0)); /* a short press, no physical hold */
+    keyboard_buffer_events(keyboard); CHECK(keyboard->buf_count==2);
+    host_device_input_touch_release();
+    uint32_t o[8],v[8]; unsigned n=key_events(o,v); int hardware_down=0;
+    for(unsigned i=0;i<n;i++) {
+        CHECK(!(o[i]==0x39 && (v[i]&0x80)));
+        if(o[i]==0x11 && (v[i]&0x80)) hardware_down++;
+    }
+    CHECK(hardware_down==1); settle_all(); drain_keys();
+    CHECK(host_device_input_touch_action(HOST_TOUCH_FORWARD,1));
+    CHECK(host_device_input_key(KB_GC,U_W,1,0));
+    keyboard_buffer_events(keyboard); CHECK(keyboard->buf_count==1);
+    host_device_input_touch_release();
+    n=key_events(o,v); CHECK(n==1 && o[0]==0x11 && v[0]==0x80);
+    CHECK(key_state(0x11)==0x80); /* native hold never flickers up */
+    CHECK(host_device_input_key(KB_GC,U_W,0,0)); settle_all(); drain_keys();
+    CHECK(host_device_input_touch_action(HOST_TOUCH_JUMP,1)); keyboard_buffer_events(keyboard);
+    S16(0x718FA6,1); /* title/pause switch may happen before Swift's poll */
+    n=key_events(o,v);
+    for(unsigned i=0;i<n;i++) CHECK(!(o[i]==0x39 && (v[i]&0x80)));
+    CHECK(!key_state(0x39)); S16(0x718FA6,0);
+    /* The actual20-byte mouse path exposes remapped buttons4–7. */
+    CHECK(host_device_input_touch_action(HOST_TOUCH_FIRE,1));
+    MouseRead held=mouse_state(); CHECK(held.b[5]==0x80 && held.b[0]==0);
+    CHECK(host_device_input_touch_action(HOST_TOUCH_FIRE,0)); settle_all();
+    held=mouse_state(); CHECK(held.b[5]==0);
+    host_device_input_touch_enable(0); host_device_input_release(); drain_keys();
+}
+
 /* The physical callback thread races the engine's reads. Every count pushed
  * is delivered exactly once; key toggles never wedge state. */
 static _Atomic int64_t consumed; static _Atomic int producer_done;
@@ -485,7 +528,7 @@ static void concurrency(void) {
 int main(void) {@autoreleasepool {
     g_inited=true;engine_flat_base=calloc(1,8*1024*1024);CHECK(engine_flat_base);
     no_controller();open_devices();
-    mapping();ownership_and_sources();click_delivery();key_delivery();mouse_motion();queue_invalidation();concurrency();
+    mapping();ownership_and_sources();click_delivery();key_delivery();mouse_motion();queue_invalidation();touch_control_queue_isolation();concurrency();
     free(engine_flat_base);
     printf("PASS %u hardware keyboard/mouse/touch source checks: HID->DIK, source arbitration, app lease vs controller gate, "
            "tick-aligned click/key delivery at 30/60/90/120/240 Hz, menu/no-clock pump fallback, stalled/jumped/replaced clock, "

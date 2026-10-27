@@ -4,12 +4,12 @@
 
 | Area | Implementation | Acceptance boundary |
 | --- | --- | --- |
-| Vision Pro | Native Metal renderer, window and immersive presentation | Build124 is installed; latest changes need a physical gameplay test |
+| Vision Pro | Native Metal renderer, window and immersive presentation | Build 127 was installed; latest changes need a physical gameplay test |
 | PSVR2 Sense | Tracked aiming, support hand, gestures, turning and optional dual wielding | Test each action and weapon on the headset |
 | Grenades | L1 hold/release with hand direction and Halo-scaled strength; 121 adds held model | Original throw animation delay remains |
 | Animation takeover | Melee; 121 adds reload and equip/put-away | Physical feel requires testing |
-| Launcher/settings | Native touch/controller UI, pause settings and confirmed quit | 121 interface changes require device acceptance |
-| iPad/iPhone | Native mobile target; controller or keyboard/mouse, plus touch aiming and click gestures | Movement needs a keyboard or controller; physical input/gameplay acceptance is pending |
+| Launcher/settings | Native touch/controller UI, pause settings and confirmed quit | Latest launcher changes require device acceptance |
+| iPad/iPhone | Native mobile target; controller, keyboard/mouse, or automatic full touch fallback | Physical input/gameplay acceptance is pending |
 | Input prompts | Gameplay action names follow the active controller or keyboard/mouse; binding editors retain their original text | Unknown or ambiguous controls retain the original label; hardware acceptance is pending |
 | Startup graphics | First build 124 launch selects maximum graphics once, then preserves later choices | Requested quality and cadence are not guaranteed sustained FPS |
 | Mobile display | Native 4:3 viewport resolution and display-maximum, 60 or 30 FPS requests | Resolution applies at the next fresh launch; achieved frame rate needs hardware measurement |

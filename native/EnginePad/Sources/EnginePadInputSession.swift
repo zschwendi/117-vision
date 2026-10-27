@@ -97,6 +97,9 @@ struct EnginePadInputSession {
 
     mutating func pause() -> [Command] { gameOwnsInput ? [.keyPulse(Self.escapeDIK)] : [] }
 
+    /// Changing between menu touch and gameplay controls invalidates old fingers.
+    mutating func cancelDirectTouch() { touch.reset() }
+
     private mutating func reconcile() -> [Command] {
         var commands: [Command] = []
         let owns = presented && EnginePadInputPolicy.gameOwnsInput(sceneActive: sceneActive, gameVisible: gameVisible,

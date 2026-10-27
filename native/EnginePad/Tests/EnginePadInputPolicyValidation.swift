@@ -126,9 +126,9 @@ import CoreGraphics
         let both = P.launcherSummary(keyboard: true, pointer: true)
         check(both.contains("mouse or trackpad") && both.contains("⌘."), both)
         let none = P.launcherSummary(keyboard: false, pointer: false)
-        check(none.contains("Touch cannot move") && none.contains("tap to fire"), none)
+        check(none.contains("Touch controls available") && none.contains("left stick to move"), none)
         let pointerOnly = P.launcherSummary(keyboard: false, pointer: true)
-        check(pointerOnly.contains("no keyboard or controller to move"), pointerOnly)
+        check(pointerOnly.contains("Full touch controls"), pointerOnly)
         // Presentation: present/dismiss never overlap; the latest wish wins.
         var g = EnginePadPresentationState()
         check(g.desire(true, canPresent: false) == .none, "no window: wait")

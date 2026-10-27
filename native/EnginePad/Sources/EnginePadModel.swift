@@ -57,5 +57,9 @@ final class EnginePadModel: ObservableObject {
         // Only a running engine takes hardware input: nothing typed or tapped
         // over the startup overlay can queue and arrive once Halo is ready.
         input.update(engineActive: state == ENGINEVISION_RUNNING)
+        // RUNNING also includes Halo's title and pause menus. Use the original
+        // front-end/pause-widget state, including non-pausing multiplayer UI.
+        input.update(nativeMenuActive: state != ENGINEVISION_RUNNING || enginevision_menu_active() != 0)
+        input.refreshTouchBindings()
     }
 }

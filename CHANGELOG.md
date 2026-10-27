@@ -1,5 +1,14 @@
 # Changelog
 
+## Mobile touch controls — 1.0.28 / build 128
+
+- Adds an on-screen movement stick, drag aiming, and buttons for fire, zoom, jump, crouch, reload, use/pickup, weapon switching, grenades, grenade selection, melee, flashlight and pause.
+- Shows gameplay controls automatically when neither a supported controller nor a physical keyboard is connected. Connecting either releases held touch input and hides the overlay.
+- Releases touch input when gameplay pauses, app settings take ownership, the scene loses focus or the app backgrounds. The launcher and Halo menus keep their normal touch interaction.
+- Preserves keyboard, mouse and trackpad controls, game saves, bundle identities and graphics preferences.
+
+See [validation](docs/VALIDATION.md) for package and device acceptance.
+
 ## 117 icon — 1.0.27 / build 127
 
 - Replaces the ambiguous plasma loop with a bold 117 mark containing cyan plasma.

@@ -112,9 +112,9 @@ enum EnginePadInputPolicy {
         case (true, false):
             return "Keyboard detected: use it to move and play. \(touch)"
         case (false, true):
-            return "Mouse or trackpad detected, but no keyboard or controller to move. Connect one to play."
+            return "Mouse or trackpad detected. Full touch controls are available for movement and actions while no keyboard or controller is connected."
         case (false, false):
-            return "No controller or keyboard detected. \(touch) Touch cannot move: pair a controller or connect a keyboard to play."
+            return "Touch controls available: left stick to move, drag right to aim, and hold Fire. Jump, use, reload, grenades and other actions are on screen."
         }
     }
 }

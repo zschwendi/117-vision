@@ -96,8 +96,8 @@ Set the application's bundle identifier to one you control, select your
 team, and enable automatic signing in Xcode. The public default,
 `org.example.halovision`, is a placeholder. The CLI normally performs unsigned
 builds; an Xcode development run supplies a profile for your account.
-The project version is 1.0.27 (build 127), updating the app icon while preserving
-build 126's launcher and gameplay behavior. See
+The project version is 1.0.28 (build 128), adding automatic mobile touch controls
+while preserving the current app artwork and existing save identities. See
 [validation](VALIDATION.md) for build and physical-device acceptance.
 Generated app artwork is included;
 see [artwork provenance](assets/README.md).

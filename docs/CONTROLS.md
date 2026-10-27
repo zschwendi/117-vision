@@ -1,6 +1,6 @@
 # Controls
 
-Pair a compatible controller with Vision Pro before launching.
+Pair a compatible controller with Vision Pro before launching. On iPhone and iPad, gameplay touch controls appear automatically when no supported controller or physical keyboard is connected.
 
 ## PS VR2 Sense
 
@@ -221,6 +221,44 @@ app; a custom Halo controller profile can assign different actions.
 | Circle / right face button or L3 | Crouch; Circle goes back in menus |
 | Options / menu | Pause |
 | D-pad up / down / left / right | Flashlight / change grenade / reload / pick up |
+
+## iPhone and iPad touch controls
+
+With no supported controller or physical keyboard connected, use the left
+on-screen stick to move and drag the open right side to look and aim. Movement,
+aiming and action buttons can be held together. The controls stay inside the
+device's safe area in portrait and landscape.
+
+| Touch control | Action |
+| --- | --- |
+| Movement stick | Walk forward/back and strafe |
+| Right-side drag | Look and aim |
+| Fire | Hold to fire or charge the equipped weapon |
+| Zoom | Cycle the weapon's scope |
+| Jump / Crouch | Jump; hold Crouch to duck |
+| Reload | Reload the equipped weapon |
+| Use | Interact or pick up a targeted weapon; hold when Halo requests a hold |
+| Swap | Switch equipped weapon |
+| Grenade | Throw the selected grenade |
+| Type | Change grenade type |
+| Melee | Perform the normal melee attack |
+| Light | Toggle the flashlight |
+| Pause | Open Halo's pause menu |
+
+The overlay hides in Halo menus and native app panels. Connecting a supported
+controller or physical keyboard also hides it; disconnecting the last one brings
+it back during gameplay. These transitions release all held touch actions.
+A mouse alone does not hide the movement/action fallback. Keyboard/mouse and
+Magic Keyboard behavior, including two-finger trackpad right-click, is unchanged.
+
+Touch action buttons and movement follow the current keyboard and mouse-button
+bindings without editing the saved profile. Buttons for unbound actions, or
+actions bound only to a joystick or axis, are dimmed and unavailable; unbound
+movement directions do not respond. Custom mouse-look axis remapping is not
+resolved by this button mapping.
+
+Physical phone/iPad gameplay and hot-plug acceptance are still pending; see
+[validation](VALIDATION.md).
 
 ## Implementation notes
 

@@ -2,8 +2,8 @@
 
 This target runs the same translated retail Halo PC 1.10 engine as the Vision Pro
 app, using one flat Metal view and the existing Apple GameController bridge.
-It requires iPadOS/iOS 18 or later. Play with an extended game controller, or
-a hardware keyboard with mouse, trackpad or touch aiming ([INPUT.md](INPUT.md)). iPad and
+It requires iPadOS/iOS 18 or later. Play with an extended game controller,
+a hardware keyboard with mouse, trackpad or touch aiming, or the automatic on-screen controls ([INPUT.md](INPUT.md)). iPad and
 iPhone share one mobile bundle identifier. The original author’s defaults are
 `com.zephyrstudios.mastercheef.ipad` and the
 `iCloud.com.zephyrstudios.mastercheef` save container. New developers must

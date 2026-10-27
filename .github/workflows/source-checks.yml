@@ -32,8 +32,8 @@ jobs:
       - name: Input and graphics source fixtures
         run: >-
           python3 -B tools/run_source_checks.py
-          --only device-input,device_messages,pad-input-policy,pad-input-session,guest_page_try,d3d9_transaction,d3d9_admission,mobile-graphics-runtime,mobile-graphics-metal,launch-preferences,frame-limit-sdk-routing,input-prompt-device,controller-prompt-names,library-artwork
+          --only device-input,device_touch_controls,device_messages,pad-input-policy,pad-input-session,pad-touch-controls,guest_page_try,d3d9_transaction,d3d9_admission,mobile-graphics-runtime,mobile-graphics-metal,launch-preferences,frame-limit-sdk-routing,input-prompt-device,controller-prompt-names,library-artwork
       - name: Input and graphics sanitizers
         run: >-
           python3 -B tools/run_source_checks.py --sanitize
-          --only device-input,device_messages,pad-input-policy,pad-input-session,guest_page_try,d3d9_transaction,d3d9_admission,mobile-graphics-runtime,mobile-graphics-metal,launch-preferences,input-prompt-device,controller-prompt-names,library-artwork
+          --only device-input,device_touch_controls,device_messages,pad-input-policy,pad-input-session,pad-touch-controls,guest_page_try,d3d9_transaction,d3d9_admission,mobile-graphics-runtime,mobile-graphics-metal,launch-preferences,input-prompt-device,controller-prompt-names,library-artwork

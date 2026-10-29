@@ -47,7 +47,7 @@ static void round_trip(mr_context *c, uint32_t w, uint32_t h, uint32_t seed) {
 int main(void) { @autoreleasepool {
     if (!MTLCreateSystemDefaultDevice()) { puts("SKIP: no Metal device"); return 0; }
     /* Every native fit the policy can produce for real panels, the bound,
-     * and the stored presets. 2224 x 4 = 8896 bytes is not a 256-byte row. */
+     * and the stored presets. 2416 x 4 = 9664 bytes is not a 256-byte row. */
     const int64_t displays[][2] = { {2752, 2064}, {2420, 1668}, {2732, 2048}, {2360, 1640}, {2266, 1488},
                                     {2868, 1320}, {5120, 3840}, {900, 1200}, {1500, 1100} };
     HaloMobileSize sizes[16]; unsigned n = 0;

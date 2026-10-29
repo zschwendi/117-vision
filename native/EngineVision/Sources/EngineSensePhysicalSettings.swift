@@ -38,6 +38,14 @@ final class EngineSensePhysicalSettingsModel: ObservableObject {
         halo_sense_set_physical_charge(physicalCharge ? 1 : 0)
     }
 
+    /// Called after idle-only CloudDocuments settings application.
+    func reloadFromDefaults() {
+        connectedArms = defaults.object(forKey: Self.armsKey) as? Bool ?? false
+        physicalMagazine = defaults.object(forKey: Self.magazineKey) as? Bool ?? false
+        reachPickup = defaults.object(forKey: Self.pickupKey) as? Bool ?? false
+        physicalCharge = defaults.object(forKey: Self.chargeKey) as? Bool ?? false
+    }
+
     /// Sense controller navigation: id, title and value for every toggle.
     /// Each id is also attached to its control with senseControllerTarget.
     struct Descriptor: Equatable { let id: String; let title: String; let value: Bool; var enabled = true }

@@ -39,6 +39,7 @@ struct EnginePadInputSession {
 
     private(set) var sceneActive = false, gameVisible = false, surfaceAttached = false
     private(set) var presented = false, engineActive = false
+    private(set) var gamePaused = false
     private(set) var keyboardConnected = false, mouseConnected = false
     private(set) var pointerLocked = false, pointerReleased = false, pointerSeen = false
     private(set) var gameOwnsInput = false, prefersPointerLock = false
@@ -52,6 +53,10 @@ struct EnginePadInputSession {
     private var hoverLast: CGPoint?
     private struct Stream { var buttons: Int; var last: CGPoint; var swallowed: Bool }
     private var streams: [Int: Stream] = [:]
+    /// Fenced UIKit streams are release-only tombstones. UIKit-only pointers
+    /// have no GCMouse up callback, so dropping their identity strands the
+    /// held-button quarantine. They may clear old holds, never inject input.
+    private var retiredStreams: [Int: Int] = [:]
 
     init(isMapped: @escaping (Int) -> Bool,
          physicallyPressed: @escaping () -> (keys: Set<Int>, buttons: Set<Int>)) {
@@ -68,6 +73,16 @@ struct EnginePadInputSession {
     /// The full-screen game controller appeared or is disappearing.
     mutating func update(presented: Bool) -> [Command] { self.presented = presented; return reconcile() }
     mutating func update(pointerLocked: Bool) -> [Command] { self.pointerLocked = pointerLocked; return reconcile() }
+
+    /// Pause exposes native app controls. Release the system pointer without
+    /// changing the player's capture preference, and quarantine a held click
+    /// on both edges so Resume cannot become a shot in the next game frame.
+    mutating func update(gamePaused: Bool) -> [Command] {
+        guard self.gamePaused != gamePaused else { return [] }
+        self.gamePaused = gamePaused
+        fence()
+        return [.release] + reconcile()
+    }
 
     /// UIKit presses stop once the surface loses first responder.
     mutating func focusLost() -> [Command] { fence(); return [.release] }
@@ -114,7 +129,7 @@ struct EnginePadInputSession {
             keyboardSource = keyboard; pointerSource = pointer; fence()
             commands.append(.select(keyboard: keyboard, pointer: pointer))
         }
-        let wants = EnginePadInputPolicy.prefersPointerLock(gameOwnsInput: owns, gameControllerMouse: mouseConnected,
+        let wants = EnginePadInputPolicy.prefersPointerLock(gameOwnsInput: owns && !gamePaused, gameControllerMouse: mouseConnected,
                                                             userReleased: pointerReleased)
         if wants != prefersPointerLock { prefersPointerLock = wants; commands.append(.pointerLockPreference(wants)) }
         return commands
@@ -125,6 +140,16 @@ struct EnginePadInputSession {
         let physical = physicallyPressed()
         quarantinedKeys = heldKeys.values.reduce(physical.keys) { $0.union($1) }
         quarantinedButtons = heldButtons.values.reduce(physical.buttons) { $0.union($1) }
+        let uikitHeldMask = heldButtons[.pointerUIKit, default: []].reduce(0) { $0 | (1 << $1) }
+        for (id, stream) in streams where !stream.swallowed {
+            let held = stream.buttons & uikitHeldMask
+            if held != 0 { retiredStreams[id] = held }
+        }
+        for mask in retiredStreams.values {
+            for bit in 0..<Self.buttonCount where mask & (1 << bit) != 0 { quarantinedButtons.insert(bit) }
+        }
+        // Their holds now belong to the tombstones, not a live source cache.
+        heldButtons[.pointerUIKit] = nil
         touch.reset(); streams.removeAll(); hoverLast = nil
     }
 
@@ -169,28 +194,44 @@ struct EnginePadInputSession {
     mutating func mouseMoved(epoch: UInt64, dx: Double, dy: Double) -> [Command] {
         // Released for app controls: raw motion stops at once, before iPadOS
         // reports the lock change.
-        guard epoch == mouseEpoch, gameOwnsInput, pointerSource == .pointerGC, !pointerReleased else { return [] }
+        guard epoch == mouseEpoch, gameOwnsInput, pointerSource == .pointerGC, !pointerReleased, !gamePaused else { return [] }
         // GameController reports +y up; DirectInput mouse +y is down.
         return [.motion(.pointerGC, dx: dx * Self.mouseCountsPerDelta, dy: -dy * Self.mouseCountsPerDelta)]
     }
 
     private mutating func pointerButton(_ source: EnginePadInputSource, index: Int, down: Bool) -> [Command] {
         let repeated = down && heldButtons[source, default: []].contains(index)
-        if down { heldButtons[source, default: []].insert(index) } else { heldButtons[source]?.remove(index) }
-        if !down { quarantinedButtons.remove(index) }
+        if down { heldButtons[source, default: []].insert(index) } else { pointerReleased(index: index) }
         if down, repeated || quarantinedButtons.contains(index) { return [] }
-        guard source == pointerSource, !down || (gameOwnsInput && !(source == .pointerGC && pointerReleased)) else { return [] }
+        guard source == pointerSource, !down || (gameOwnsInput && !(source == .pointerGC && (pointerReleased || gamePaused))) else { return [] }
         return [.button(source, index: index, down: down)]
+    }
+
+    /// Both APIs describe the same system pointer. Either API's physical up
+    /// retires a fenced hold in the other, so a later source change cannot
+    /// resurrect it. Live UIKit streams retain their own end bookkeeping.
+    private mutating func pointerReleased(index: Int) {
+        heldButtons[.pointerGC]?.remove(index)
+        heldButtons[.pointerUIKit]?.remove(index)
+        quarantinedButtons.remove(index)
+        for id in Array(retiredStreams.keys) {
+            let remaining = (retiredStreams[id] ?? 0) & ~(1 << index)
+            retiredStreams[id] = remaining == 0 ? nil : remaining
+        }
+    }
+
+    private mutating func releaseRetiredButtons(_ mask: Int) {
+        for bit in 0..<Self.buttonCount where mask & (1 << bit) != 0 { pointerReleased(index: bit) }
     }
 
     // MARK: UIKit pointer fallback
 
-    private var uikitPointerDrivesGame: Bool { gameOwnsInput && pointerSource == .pointerUIKit && !pointerReleased }
+    private var uikitPointerDrivesGame: Bool { gameOwnsInput && pointerSource == .pointerUIKit && (!pointerReleased || gamePaused) }
 
     mutating func pointerBegan(_ id: Int, at point: CGPoint, buttons: Int) -> [Command] {
         pointerSeen = true; hoverLast = nil
-        guard gameOwnsInput else { return [] }
-        if pointerReleased {
+        guard gameOwnsInput, retiredStreams[id] == nil else { return [] }
+        if pointerReleased && !gamePaused {
             // A click on the game recaptures the pointer; it is not a shot.
             streams[id] = Stream(buttons: 0, last: point, swallowed: true)
             return togglePointerCapture()
@@ -200,6 +241,12 @@ struct EnginePadInputSession {
     }
 
     mutating func pointerMoved(_ id: Int, to point: CGPoint, buttons: Int) -> [Command] {
+        if let retired = retiredStreams[id] {
+            // A button-mask change can deliver an up before touchesEnded.
+            // Ignore its position and any new downs from this old stream.
+            releaseRetiredButtons(retired & ~buttons)
+            return []
+        }
         guard var stream = streams[id], !stream.swallowed, uikitPointerDrivesGame else { return [] }
         var commands: [Command] = []
         if point != stream.last {
@@ -217,6 +264,11 @@ struct EnginePadInputSession {
     }
 
     mutating func pointerEnded(_ id: Int, at point: CGPoint) -> [Command] {
+        if let retired = retiredStreams.removeValue(forKey: id) {
+            releaseRetiredButtons(retired)
+            hoverLast = nil
+            return []
+        }
         guard streams[id] != nil else { return [] }
         let commands = pointerMoved(id, to: point, buttons: 0)
         streams[id] = nil; hoverLast = nil
@@ -226,11 +278,16 @@ struct EnginePadInputSession {
     /// A cancelled stream adds no motion and no click; its held buttons are
     /// cancelled natively (queued presses dropped, a seen press released).
     mutating func pointerCancelled(_ id: Int) -> [Command] {
+        if let retired = retiredStreams.removeValue(forKey: id) {
+            releaseRetiredButtons(retired)
+            hoverLast = nil
+            return []
+        }
         guard let stream = streams.removeValue(forKey: id) else { return [] }
         hoverLast = nil
         var commands: [Command] = []
         for bit in 0..<Self.buttonCount where stream.buttons & (1 << bit) != 0 {
-            heldButtons[.pointerUIKit]?.remove(bit)
+            pointerReleased(index: bit)
             commands.append(.cancelButton(.pointerUIKit, index: bit))
         }
         return commands
@@ -239,7 +296,7 @@ struct EnginePadInputSession {
     enum HoverPhase { case began, changed, ended }
     mutating func hover(_ phase: HoverPhase, at point: CGPoint) -> [Command] {
         pointerSeen = true
-        guard streams.isEmpty else { hoverLast = nil; return [] }   // a press/drag owns pointer motion
+        guard streams.isEmpty && retiredStreams.isEmpty else { hoverLast = nil; return [] } // a live or fenced press owns pointer motion
         switch phase {
         case .began: hoverLast = point; return []
         case .ended: hoverLast = nil; return []

@@ -181,6 +181,7 @@ typedef struct { uint32_t addr; HostShim fn; const char *name; } Override;
 #include "model_capture_hooks.inc"
 #include "audio_ownership_trace.inc"
 #include "input_prompt_hooks.inc"
+#include "mobile_reticle_hooks.inc"
 #include "native_leaves.h"
 #include "native_gather.h"
 #include "native_gather_tree.h"
@@ -274,6 +275,7 @@ int engine_dispatch_override(EngineCPU *cpu, uint32_t address) {
         for(unsigned h=0;h<2;h++){input.trigger[h]=bridge.trigger[h];input.reload[h]=bridge.reload[h];}
         host_dual_wield_update(cpu,address,&input);
     }
+    if (host_mobile_reticle_dispatch(cpu, address)) return 1;
     if (host_sense_weapon_dispatch(cpu, address)) return 1;
     /* After the weapon hook has captured this outer render's camera. */
     if (host_sense_body_dispatch(cpu, address)) return 1;

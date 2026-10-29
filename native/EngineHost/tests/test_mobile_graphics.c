@@ -1,4 +1,4 @@
-/* iPad/iPhone launch-graphics policy (mobile_graphics.h): native 4:3 fit,
+/* iPad/iPhone launch-graphics policy (mobile_graphics.h): native aspect fit,
  * stored and explicit sizes, refresh clamping, memory estimate and the
  * producer cadence. Pure; no display, device or engine. */
 #include "../mobile_graphics.h"
@@ -13,31 +13,29 @@ static void native_fits(void) {
     int ok; uint32_t flags; HaloMobileSize s;
     /* 13-inch iPad Pro (M4/M5) full-screen landscape window: 1:1. */
     s = fit(2752, 2064, &ok, &flags); assert(ok && s.width == 2752 && s.height == 2064 && !flags);
-    /* The same panel as a portrait window: width limits, letterboxed, never
-     * a sorted 2752 x 2064 that would not fit. */
-    s = fit(2064, 2752, &ok, &flags); assert(ok && s.width == 2064 && s.height == 1548);
-    /* Coordinator's repro: a 900 x 1200 portrait viewport must not pick 1200 x 900. */
-    s = fit(900, 1200, &ok, &flags); assert(ok && s.width == 896 && s.height == 672);
+    /* A portrait window retains its aspect, uniformly reduced to the bound. */
+    s = fit(2064, 2752, &ok, &flags); assert(ok && s.width == 1616 && s.height == 2155);
+    s = fit(900, 1200, &ok, &flags); assert(ok && s.width == 896 && s.height == 1195);
     s = fit(1200, 900, &ok, &flags); assert(ok && s.width == 1200 && s.height == 900);
-    /* 11-inch iPad Pro landscape: wider than 4:3, the height limits. */
-    s = fit(2420, 1668, &ok, &flags); assert(ok && s.width == 2224 && s.height == 1668);
-    /* 12.9-inch iPad Pro landscape: 2048 % 12 = 8 -> 2040 rows. */
-    s = fit(2732, 2048, &ok, &flags); assert(ok && s.height == 2040 && s.width == 2720);
-    /* Stage Manager windows of arbitrary size, and a very wide iPhone. */
+    /* Full width on the 11-inch iPad and iPhone; only pixel alignment reduces
+     * the measured viewport, never a forced 4:3 crop or stretched frame. */
+    s = fit(2420, 1668, &ok, &flags); assert(ok && s.width == 2416 && s.height == 1665);
+    s = fit(2732, 2048, &ok, &flags); assert(ok && s.width == 2720 && s.height == 2039);
     s = fit(1366, 1024, &ok, &flags); assert(ok && s.width == 1360 && s.height == 1020);
-    s = fit(2868, 1320, &ok, &flags); assert(ok && s.width == 1760 && s.height == 1320);
-    /* Every result is exact 4:3, 16-pixel aligned, inside the window as oriented. */
+    s = fit(2868, 1320, &ok, &flags); assert(ok && s.width == 2864 && s.height == 1318);
+    /* Sweep both orientations, phone-wide windows, and memory-bound cases:
+     * the render aspect differs from the target by at most half a pixel. */
     for (int64_t w = 600; w <= 6000; w += 37) for (int64_t h = 400; h <= 4000; h += 41) {
         s = fit(w, h, &ok, &flags);
         if (!ok) { assert(s.width == 0 && s.height == 0); continue; }
-        assert((uint64_t)s.width * 3u == (uint64_t)s.height * 4u);
-        assert(s.width % 16 == 0 && s.height % 12 == 0 && ((uint64_t)s.width * 4u) % 64 == 0);
+        int64_t aspect_error = (int64_t)s.height * w - (int64_t)s.width * h;
+        assert(aspect_error * 2 <= w && aspect_error * 2 >= -w);
+        assert(s.width % 16 == 0 && ((uint64_t)s.width * 4u) % 64 == 0);
         assert(s.width <= (uint64_t)w && s.height <= (uint64_t)h);
         assert(halo_mobile_size_allowed(s.width, s.height));
     }
-    /* A 4K-class or larger window is bounded, never 3840 x 2880. */
     s = fit(5120, 3840, &ok, &flags); assert(ok && s.width == 2880 && s.height == 2160 && (flags & HALO_MOBILE_FLAG_NATIVE_CLAMPED));
-    s = fit(16384, 16384, &ok, &flags); assert(ok && s.width == 2880 && s.height == 2160);
+    s = fit(16384, 16384, &ok, &flags); assert(ok && s.width == 2160 && s.height == 2160);
     /* Not a window: zero, negative, absurd, overflow-sized or too small. */
     const int64_t bad[][2] = { {0, 0}, {-2752, 2064}, {2752, -1}, {16385, 2064}, {2752, INT64_MAX},
                                {INT64_MIN, 5}, {639, 2000}, {2000, 479}, {640, 470}, {1, 1} };
@@ -178,15 +176,27 @@ static void plans(void) {
     /* A Stage Manager window on that panel: the window drives the fit, the
      * panel (as UIKit reports it, portrait) drives the drawable estimate. */
     halo_mobile_plan_view("native", "display", NULL, 1500, 1100, 2064, 2752, 120, &p);
-    assert(p.render.width == 1456 && p.render.height == 1092 && p.view_width == 1500 && p.view_height == 1100);
+    assert(p.render.width == 1488 && p.render.height == 1091 && p.view_width == 1500 && p.view_height == 1100);
     assert(p.display_width == 2752 && p.display_height == 2064 && p.memory.drawables == 3 * gpu(2752ull * 2064 * 4));
     /* No window yet (no scene attached): native falls back to the old default. */
     halo_mobile_plan("native", NULL, NULL, 0, 0, 0, &p);
     assert(p.size_source == HALO_MOBILE_SIZE_NATIVE_FALLBACK && p.render.width == 1600 && p.render.height == 1200);
     assert(p.refresh == 60 && (p.flags & HALO_MOBILE_FLAG_DISPLAY_UNKNOWN) && (p.flags & HALO_MOBILE_FLAG_RATE_UNKNOWN));
-    /* Existing presets keep their meaning, even above the window (supersampled). */
+    /* Presets keep their pixel budgets while adopting the window aspect. */
     halo_mobile_plan("2048x1536", "60", NULL, 2868, 1320, 120, &p);
-    assert(p.size_source == HALO_MOBILE_SIZE_PRESET && p.render.width == 2048 && p.refresh == 60);
+    assert(p.size_source == HALO_MOBILE_SIZE_PRESET && p.render.width == 2608 && p.render.height == 1200 && p.refresh == 60);
+    /* Every saved quality budget preserves each supported device/window
+     * aspect, and can never exceed the old preset's allocation budget. */
+    const int64_t views[][2] = {{2752,2064}, {2420,1668}, {2868,1320}, {1500,1100}, {900,1200}};
+    for (unsigned v = 0; v < sizeof views / sizeof views[0]; v++) for (int q = 0; q < HALO_MOBILE_PRESET_COUNT; q++) {
+        char stored[32]; HaloMobileSize budget = halo_mobile_presets[q];
+        snprintf(stored, sizeof stored, "%ux%u", budget.width, budget.height);
+        halo_mobile_plan(stored, "display", NULL, views[v][0], views[v][1], 120, &p);
+        assert(p.size_source == HALO_MOBILE_SIZE_PRESET && halo_mobile_size_allowed(p.render.width, p.render.height));
+        assert((uint64_t)p.render.width * p.render.height <= (uint64_t)budget.width * budget.height);
+        int64_t error = (int64_t)p.render.height * views[v][0] - (int64_t)p.render.width * views[v][1];
+        assert(error * 2 <= views[v][0] && error * 2 >= -views[v][0]);
+    }
     /* Nothing or garbage stored: the old default, garbage flagged. */
     halo_mobile_plan(NULL, NULL, NULL, 2752, 2064, 120, &p);
     assert(p.size_source == HALO_MOBILE_SIZE_DEFAULT && p.render.width == 1600 && !(p.flags & HALO_MOBILE_FLAG_STORED_REJECTED));
@@ -246,6 +256,6 @@ static void cadence(void) {
 
 int main(void) {
     native_fits(); parsing(); extras(); refresh(); memory(); plans(); cadence();
-    puts("mobile graphics: oriented 4:3 window fit, one admission bound, stored/override/extras parsing, refresh never above the display, conservative memory budget, cadence pass");
+    puts("mobile graphics: adaptive oriented aspect and preset pixel budgets, one admission bound, stored/override/extras parsing, refresh never above the display, conservative memory budget, cadence pass");
     return 0;
 }

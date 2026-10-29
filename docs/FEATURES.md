@@ -4,7 +4,7 @@
 
 | Area | Implementation | Acceptance boundary |
 | --- | --- | --- |
-| Vision Pro | Native Metal renderer; window-first play and immersive expansion of the same running session | Build 129 source/SDK checks pass; latest verified installation remains 127; physical transition testing is pending |
+| Vision Pro | Native Metal renderer; window-first play and immersive expansion of the same running session | Build 130 compiles and signs with the single-session presentation; physical transition testing is pending |
 | PSVR2 Sense | Tracked aiming, support hand, gestures, turning and optional dual wielding | Test each action and weapon on the headset |
 | Grenades | L1 hold/release with hand direction and Halo-scaled strength; 121 adds held model | Original throw animation delay remains |
 | Animation takeover | Melee; 121 adds reload and equip/put-away | Physical feel requires testing |
@@ -12,7 +12,7 @@
 | iPad/iPhone | Native mobile target; controller, keyboard/mouse, or automatic full touch fallback | Physical input/gameplay acceptance is pending |
 | Input prompts | Gameplay action names follow the active controller or keyboard/mouse; binding editors retain their original text | Unknown or ambiguous controls retain the original label; hardware acceptance is pending |
 | Startup graphics | First build 124 launch selects maximum graphics once, then preserves later choices | Requested quality and cadence are not guaranteed sustained FPS |
-| Mobile display | Native 4:3 viewport resolution and display-maximum, 60 or 30 FPS requests | Resolution applies at the next fresh launch; achieved frame rate needs hardware measurement |
+| Mobile display | Adaptive landscape viewport resolution and display-maximum, 60 or 30 FPS requests | Resolution applies at the next fresh launch; achieved frame rate needs hardware measurement |
 | Cloud saves | Immutable snapshots, recovery and explicit conflicts | Sync only while engine is idle in a fresh app process |
 | Graphics | Local optional texture/shader packs and graphics settings | Packs retain their own notices; performance depends on settings and hardware |
 

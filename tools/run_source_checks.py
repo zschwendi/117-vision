@@ -246,6 +246,7 @@ def main():
         run([sys.executable, ROOT / 'tools/test_engine_vision_report_summary.py'])
         run([sys.executable, ROOT / 'tools/test_watch_engine_vision_telemetry.py'])
         run([sys.executable, ROOT / 'tools/test_build_engine_ipad.py'])
+        run([sys.executable, ROOT / 'tools/test_settings_sync.py'])
         if platform.system() == 'Darwin' and not args.portable_only:
             run([sys.executable, ROOT / 'tools/test_mobile_cloud_saves.py'])
         run([sys.executable, HOST / 'tests/test_dispatch_interest.py'])
@@ -279,6 +280,14 @@ def main():
     # and print SKIP without generated sources. Never embed a private path.
     for ios in (0, 1):
         cases.append(('frame_limit_original', ['-w', f'-DENGINE_IOS_HOOKS={ios}',
+                      '-DHALO_ARM64_FENV_FAST=1', '-frounding-math', '-ffp-contract=off',
+                      *(['-I', generated] if generated else [])]))
+    # The actual engine projection must preserve geometry at each mobile aspect.
+    cases.append(('mobile_projection_original', ['-w', '-DHALO_ARM64_FENV_FAST=1',
+                  '-frounding-math', '-ffp-contract=off',
+                  *(['-I', generated] if generated else [])]))
+    for mobile in (0, 1):
+        cases.append(('mobile_reticle_original', ['-w', f'-DHALO_MOBILE_RETICLE={mobile}',
                       '-DHALO_ARM64_FENV_FAST=1', '-frounding-math', '-ffp-contract=off',
                       *(['-I', generated] if generated else [])]))
     # The original prompt formatter is optional in the public source checkout.
@@ -376,7 +385,7 @@ def main():
                 command += ['-ffunction-sections', '-fdata-sections', '-Wl,-dead_strip']
             if name == 'cache_read_wait': command += ['-ffunction-sections', '-fdata-sections', '-Wl,-dead_strip']
             run([*command, '-o', binary])
-            if name in ('frame_limit_original', 'input_prompt_original'):
+            if name in ('frame_limit_original', 'input_prompt_original', 'mobile_projection_original', 'mobile_reticle_original'):
                 result = run([binary], capture_output=True)
                 if any(line.startswith('SKIP:') for line in result.stdout.splitlines()): skipped_cases.add(name)
             else:

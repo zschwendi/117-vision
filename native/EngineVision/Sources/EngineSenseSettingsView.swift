@@ -156,6 +156,22 @@ final class EngineSenseSettingsModel: ObservableObject {
         halo_sense_set_scope_smoothing(scopedSmoothing ? 1 : 0)
         halo_sense_set_weapon_haptics(trackedWeaponHaptics ? 1 : 0)
     }
+
+    /// Remote settings are applied only at the idle launcher, never mid-game.
+    func reloadFromDefaults() {
+        quickGestures = defaults.object(forKey: Self.gesturesKey) as? Bool ?? true
+        fullBody = defaults.object(forKey: Self.fullBodyKey) as? Bool ?? false
+        gripContinuity = defaults.object(forKey: Self.gripContinuityKey) as? Bool ?? true
+        scopedSmoothing = defaults.object(forKey: Self.scopedSmoothingKey) as? Bool ?? false
+        trackedWeaponHaptics = defaults.object(forKey: Self.weaponHapticsKey) as? Bool ?? true
+        showHandsAndControllers = defaults.object(forKey: Self.visibilityKey) as? Bool ?? true
+        trackedAim = defaults.object(forKey: Self.aimKey) as? Bool ?? true
+        turnMode = (defaults.object(forKey: Self.turnKey) as? Int).flatMap(EngineSenseTurnMode.init(rawValue:)) ?? .pointToTurn
+        turnSpeed = Self.bounded(defaults.object(forKey: Self.speedKey) as? Double ?? 90, 30...120, fallback: 90)
+        turnBoundary = Self.bounded(defaults.object(forKey: Self.boundaryKey) as? Double ?? 0.72, 0.50...0.90, fallback: 0.72)
+        weaponMode = defaults.string(forKey: Self.weaponModeKey).flatMap(EngineSenseWeaponMode.init(rawValue:)) ?? .single
+    }
+
 }
 
 /// One Sense-controller navigation row, independent of SwiftUI so the same

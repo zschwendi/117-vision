@@ -1,5 +1,14 @@
 # Changelog
 
+## Adaptive mobile display and shared preferences — 1.0.30 / build 130
+
+- Renders iPad/iPhone gameplay at the current landscape screen aspect. Native uses the measured window; quality presets retain their pixel budgets and adapt to its shape. The weapon crosshair keeps its original proportions.
+- Uses native iOS navigation and settings. Library, Settings and Resume controls appear only in the actual gameplay pause menu. Pausing releases the pointer for app controls; resuming preserves the capture preference and fences held clicks.
+- Syncs supported app preferences separately from save archives through the existing iCloud container. Shared choices merge per setting, mobile quality choices stay in the iPhone/iPad family, and headset calibration stays local. Incoming changes apply only before an engine session.
+- Includes build 129’s single-session Vision Pro window/immersive presentation and build 128’s automatic mobile touch controls.
+
+See [validation](docs/VALIDATION.md) for build, installation and physical acceptance.
+
 ## One Vision Pro session — 1.0.29 / build 129
 
 - Starts Halo in the game window, with compact Expand and Settings buttons above it.

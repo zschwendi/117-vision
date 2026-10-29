@@ -20,6 +20,11 @@ final class EngineGraphicsQualityModel: ObservableObject {
         var current = HaloGraphicsSettings()
         halo_graphics_get(&current)
         sceneAA = Int(current.scene_aa); foveation = Int(current.engine_foveation); gpuTiming = current.gpu_timing != 0
+        reloadFromDefaults()
+    }
+
+    /// Called by settings sync only while the native runtime is IDLE.
+    func reloadFromDefaults() {
         restoring = true
         if let data = defaults.data(forKey: Self.preferenceKey),
            let saved = try? JSONDecoder().decode(EngineGraphicsPreferences.self, from: data), saved.version == 1 {

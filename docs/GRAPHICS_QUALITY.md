@@ -25,8 +25,11 @@ Build 124 makes a one-time change on the first launch of each device family:
   gameplay 30 FPS limiter while preserving simulation timing, cinematics,
   timedemo behavior and the stored profile value. Original limiter leaves
   Halo's saved limiter behavior in control.
-- iPad/iPhone: Native resolution and Display maximum. Native fits a 4:3
-  picture inside the attached display, bounded at 2880 × 2160.
+- iPad/iPhone: Native resolution and Display maximum. Native follows the
+  landscape window’s aspect, within the existing 2880 × 2160 / 6.22 MP bound.
+  Low through Very High preserve their pixel budgets while adapting to the
+  window shape. The world projection and weapon crosshair keep correct
+  proportions; other legacy HUD/menu art retains Halo PC’s layout.
 
 After that first launch, lower choices are preserved. Resolution and the
 engine frame-rate choice apply after fully closing and reopening the app.

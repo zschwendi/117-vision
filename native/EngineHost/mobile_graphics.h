@@ -10,12 +10,13 @@
  *
  * Resolution. The engine fixes its back buffer when it creates the device,
  * so every choice applies at the next launch; nothing resizes a live back
- * buffer. Halo lays out its projection and HUD for 4:3 and the presenter
- * letterboxes, so every size is exactly 4:3: "native" is the largest 4:3
- * game viewport inside the window's pixels as the window is oriented now
- * (a landscape full-screen window, a narrower Stage Manager window, or a
- * portrait one), height a multiple of 12 (width a multiple of 16, a 64-byte
- * BGRA row). It is never a stretched or full-panel-wide picture.
+ * buffer. The original engine projection uses the actual viewport aspect;
+ * native now follows the window's oriented aspect instead of imposing 4:3.
+ * Width is aligned to 16 pixels (a 64-byte BGRA row), and height is rounded
+ * to its closest pixel at that aspect. The stored resolution choices are
+ * quality budgets: their total pixels are retained while width and height
+ * adapt to the window. No image crop or presentation stretch substitutes
+ * for rendering the correct field of view.
  *
  * One bound admits every engine back buffer on iPad/iPhone: the native fit,
  * the presets, an explicit HALO_VIDMODE, a -vidmode already in
@@ -25,8 +26,8 @@
  * at 1:1 and refuses 4K-class sizes: Halo itself only accepts a mode
  * strictly inside its 4096 x 3072 virtual desktop (shims_misc.c), the back
  * buffer and depth surface live in the 752 MiB guest page space, and nothing
- * larger has been run. The stored presets keep their meaning; an unknown
- * stored value is the old default, 1600 x 1200.
+ * larger has been run. An unknown stored value keeps the old 1600 x 1200
+ * pixel budget, fitted to the window when it can be measured.
  *
  * Refresh. Halo's simulation runs 30 ticks a second whatever the frame rate.
  * Its own 30 fps limiter is the wait loop in its time update (004C9F90),
@@ -57,9 +58,7 @@ enum {
     /* Window or display metrics past this are a bad measurement. */
     HALO_MOBILE_DISPLAY_LIMIT = 16384,
     HALO_MOBILE_DEFAULT_WIDTH = 1600, HALO_MOBILE_DEFAULT_HEIGHT = 1200,
-    /* The size step of a native fit: 12 rows keep width = 4/3 height a whole
-     * multiple of 16 pixels. */
-    HALO_MOBILE_HEIGHT_STEP = 12,
+    HALO_MOBILE_WIDTH_STEP = 16,
     HALO_MOBILE_MAX_FPS = 240, HALO_MOBILE_FALLBACK_FPS = 60,
     /* Halo's own limiter rate; requests above it lift the saved throttle. */
     HALO_MOBILE_ENGINE_CAP_FPS = 30,
@@ -166,24 +165,39 @@ static inline int halo_mobile_size_allowed(uint32_t w, uint32_t h) {
            w < HALO_MOBILE_DESKTOP_WIDTH && h < HALO_MOBILE_DESKTOP_HEIGHT;
 }
 
-/* The largest exact 4:3 game viewport inside a window of w x h pixels as it
- * is oriented (no sorting: a 900 x 1200 portrait window fits 896 x 672,
- * never 1200 x 900), within the policy bound. Returns 0 (and 0 x 0) when
- * the window cannot hold the minimum or the numbers are not a window. */
+/* Fit a pixel budget to an oriented aspect. Both edges and the pixel count
+ * remain within the existing allocation bounds. Integer search avoids a
+ * floating-point square-root rounding up at an allocation boundary. The
+ * closest integer height leaves at most half a row of aspect quantisation. */
+static inline int halo_mobile_aspect_fit(int64_t w, int64_t h, uint64_t pixels,
+                                        uint32_t max_w, uint32_t max_h, HaloMobileSize *out) {
+    if (out) out->width = out->height = 0;
+    if (!out || w <= 0 || h <= 0 || w > HALO_MOBILE_DISPLAY_LIMIT || h > HALO_MOBILE_DISPLAY_LIMIT) return 0;
+    if (max_w > HALO_MOBILE_MAX_WIDTH) max_w = HALO_MOBILE_MAX_WIDTH;
+    if (max_h > HALO_MOBILE_MAX_HEIGHT) max_h = HALO_MOBILE_MAX_HEIGHT;
+    if (pixels > HALO_MOBILE_MAX_PIXELS) pixels = HALO_MOBILE_MAX_PIXELS;
+    for (uint32_t width = max_w - max_w % HALO_MOBILE_WIDTH_STEP;
+         width >= HALO_MOBILE_MIN_WIDTH; width -= HALO_MOBILE_WIDTH_STEP) {
+        uint32_t height = (uint32_t)(((uint64_t)width * (uint64_t)h + (uint64_t)w / 2u) / (uint64_t)w);
+        if (height <= max_h && (uint64_t)width * height <= pixels && halo_mobile_size_allowed(width, height)) {
+            out->width = width; out->height = height; return 1;
+        }
+    }
+    return 0;
+}
+
+/* Native means one render pixel per window pixel where the allocation bound
+ * permits it. A larger window is uniformly scaled down, keeping its aspect.
+ * It never sorts the window's edges or silently replaces a portrait aspect
+ * with landscape. Unknown/too-small measurements return 0 x 0. */
 static inline int halo_mobile_native_fit(int64_t w, int64_t h, HaloMobileSize *out, uint32_t *flags) {
     if (out) out->width = out->height = 0;
     if (!out || w <= 0 || h <= 0 || w > HALO_MOBILE_DISPLAY_LIMIT || h > HALO_MOBILE_DISPLAY_LIMIT) return 0;
-    uint64_t width_limited = (uint64_t)w * 3u / 4u;
-    uint64_t height = (uint64_t)h < width_limited ? (uint64_t)h : width_limited;
-    if (height > HALO_MOBILE_MAX_HEIGHT) { height = HALO_MOBILE_MAX_HEIGHT; if (flags) *flags |= HALO_MOBILE_FLAG_NATIVE_CLAMPED; }
-    height -= height % HALO_MOBILE_HEIGHT_STEP;
-    uint64_t width = height / 3u * 4u;
-    if (!halo_mobile_size_allowed((uint32_t)width, (uint32_t)height)) return 0;
-    out->width = (uint32_t)width; out->height = (uint32_t)height;
-    return 1;
+    if (flags && (w > HALO_MOBILE_MAX_WIDTH || h > HALO_MOBILE_MAX_HEIGHT)) *flags |= HALO_MOBILE_FLAG_NATIVE_CLAMPED;
+    return halo_mobile_aspect_fit(w, h, HALO_MOBILE_MAX_PIXELS, (uint32_t)w, (uint32_t)h, out);
 }
 
-/* The stored launch presets, unchanged from the earlier picker. */
+/* Stable saved preference values; their products are adaptive quality budgets. */
 static const HaloMobileSize halo_mobile_presets[] = {
     { 1280, 960 }, { 1600, 1200 }, { 1920, 1440 }, { 2048, 1536 }
 };
@@ -352,6 +366,11 @@ static inline void halo_mobile_plan_view(const char *stored, const char *rate, c
         if (plan->native.width) { size = plan->native; plan->size_source = HALO_MOBILE_SIZE_NATIVE; }
         else plan->size_source = HALO_MOBILE_SIZE_NATIVE_FALLBACK;
     } else if (stored && stored[0]) plan->flags |= HALO_MOBILE_FLAG_STORED_REJECTED;
+    if ((plan->size_source == HALO_MOBILE_SIZE_PRESET || plan->size_source == HALO_MOBILE_SIZE_DEFAULT) && plan->native.width) {
+        HaloMobileSize adaptive;
+        if (halo_mobile_aspect_fit(view_w, view_h, (uint64_t)size.width * size.height,
+                                  HALO_MOBILE_MAX_WIDTH, HALO_MOBILE_MAX_HEIGHT, &adaptive)) size = adaptive;
+    }
     if (override && override[0]) {
         HaloMobileSize explicit_size;
         if (halo_mobile_parse_override(override, &explicit_size)) { size = explicit_size; plan->size_source = HALO_MOBILE_SIZE_OVERRIDE; }

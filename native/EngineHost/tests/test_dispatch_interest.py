@@ -22,7 +22,7 @@ assert 'TARGET_OS_IOS' in gate and 'TARGET_OS_VISION' in gate and '!(defined(TAR
 assert hooks and trace and ios and not hooks & trace and not ios & (hooks | trace)
 hooks |= ios
 files = ['a10_control.inc','a10_gamepad.inc','hsc_trace.inc','audio_ownership_trace.inc',
-         'model_capture_hooks.inc','panorama_hooks.inc','sense_weapon_hooks.inc','sense_grenade.inc','sense_grenade_hold.inc','sense_body_hooks.inc','sense_world_model_override.inc','sense_dual_render.inc','sense_reticle_offhand.inc','dual_wield.inc','panorama_overlay_scope.h','native_leaves.h','frame_pacing_hooks.inc','frame_limit_hooks.inc','input_prompt_hooks.inc']
+         'model_capture_hooks.inc','panorama_hooks.inc','sense_weapon_hooks.inc','sense_grenade.inc','sense_grenade_hold.inc','sense_body_hooks.inc','sense_world_model_override.inc','sense_dual_render.inc','sense_reticle_offhand.inc','dual_wield.inc','panorama_overlay_scope.h','native_leaves.h','frame_pacing_hooks.inc','frame_limit_hooks.inc','input_prompt_hooks.inc','mobile_reticle_hooks.inc']
 required, trace_only = {0x004C6E80}, set()
 for name in files:
     text = (root/name).read_text()

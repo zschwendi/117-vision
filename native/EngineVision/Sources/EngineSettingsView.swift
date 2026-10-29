@@ -74,6 +74,11 @@ struct EngineSettingsView: View {
                         .senseControllerTarget("settings.about")
                     Button("Done", action: session.hideSettings).senseControllerTarget("settings.done")
                 }
+                Section("Settings sync") {
+                    Text(session.settingsSync.status)
+                    Text("App preferences sync through iCloud. Halo’s profiles and control bindings travel with cloud saves. Display and headset calibration stay appropriate to this device. Incoming changes apply before a new game session.")
+                        .font(.footnote).foregroundStyle(.secondary)
+                }
                 Section {
                     Button("Reset Presentation Settings", role: .destructive) { showingReset = true }
                 } footer: { Text("Resets depth, view and sound. Game progress and graphics packs stay as they are.") }

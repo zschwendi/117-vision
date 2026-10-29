@@ -79,6 +79,7 @@ final class EnginePadInputRouter: ObservableObject {
     /// The game is shown with no app sheet, importer or alert over it.
     func update(gameVisible: Bool) { run(session.update(gameVisible: gameVisible)) }
     func update(engineActive: Bool) { if engineActive != session.engineActive { run(session.update(engineActive: engineActive)) } }
+    func update(gamePaused: Bool) { run(session.update(gamePaused: gamePaused)) }
     func update(nativeMenuActive: Bool) {
         guard self.nativeMenuActive != nativeMenuActive else { return }
         self.nativeMenuActive = nativeMenuActive

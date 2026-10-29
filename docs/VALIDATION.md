@@ -1,6 +1,16 @@
 # 117 validation
 
-## Current Vision source candidate: build 129
+## Current candidate: build 130
+
+Version 1.0.30 combines adaptive mobile rendering and native pause-only iOS UI with shared app-settings sync, plus the prior single-session Vision presentation and mobile touch controls. Full iPhone/iPad and Vision Pro device-SDK Swift typechecks pass. Independent source review found and fixed a mobile launch-after-background race.
+
+The actual original-engine projection fixture verifies viewport aspect, zoom, center and equal geometry in pixels. Original bitmap constructors verify mobile crosshair proportions, exact caller scope and tag restoration. Mobile bounds/runtime/Metal round-trip fixtures pass with sanitizers. The pointer lifecycle fixture passes 112 checks normally and with AddressSanitizer, including UIKit-only release and pause/resume held-click quarantine. Existing mobile save recovery tests and 22 mobile-builder tests pass.
+
+Shared-settings tests cover default bootstrap, per-key merge, offline restart, late arrivals, account changes, queued edits during reads/writes, the defaults-write-before-notification interruption, deferred application without echoes, and native-setting preservation. These are synthetic tests; no live iCloud account or device is used by the fixtures. Original Halo profiles/bindings remain in existing save snapshots. App settings apply only before a native engine session, and Play does not await the settings network operation.
+
+Both physical-device packages compile and sign: 60 fresh native units per platform, 28 mobile Swift sources and 61 Vision Swift sources. Both preserve their existing profile, signer, cloud identity and approved artwork, and pass strict signature/package verification. The Vision recipe’s certificate-display command initially used incorrect syntax; corrected read-only verification passed without rebuilding, re-signing or modifying the package. Physical gameplay and live iCloud acceptance remain pending. Mobile full-screen layout, pause controls, keyboard/trackpad behavior and the cross-device iCloud roundtrip require device acceptance. Back buffers adopt the launch aspect; live Stage Manager resizing requires a fresh launch. Legacy HUD/menu art beyond the weapon crosshair retains the original layout.
+
+## Previous Vision source candidate: build 129
 
 Version 1.0.29 makes the main Vision Pro window singular and starts gameplay there. Expand and Settings are compact top controls. Window and immersive presentation share the app-owned engine; closing immersive returns to the existing game window. Scene generations reject stale/duplicate close callbacks, frame completion gates hiding the window, and a real UIKit foreground attachment gates immersive dismissal. Interrupted returns remain pending for foreground/attachment. Head pose publication and renderer shutdown share a lock so an old renderer cannot restore a stale pose over the returning window or a new scene.
 
@@ -8,7 +18,7 @@ The window now consumes the live center GPU view and HUD from the existing panor
 
 The fresh package build is blocked by local disk space below its existing 6 GiB guard. No build 129 executable, signing, installation or physical acceptance is claimed. The production inputs are frozen for the next build attempt; the last verified Vision installation remains build 127. The mobile touch package remains build 128.
 
-## Current mobile preview: build 128
+## Previous mobile preview: build 128
 
 Version 1.0.28 adds automatic iPhone/iPad touch gameplay controls when neither a supported controller nor a physical keyboard is connected. Movement, aiming and held fire can run together. Named actions resolve the current keyboard/mouse-button bindings without changing profiles; unsupported or unbound actions do not silently trigger another control. Menus, app panels, scene loss and hardware changes release held touch input.
 

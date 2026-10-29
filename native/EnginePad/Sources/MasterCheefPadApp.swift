@@ -15,15 +15,14 @@ struct MasterCheefPadApp: App {
     @StateObject private var assets = EngineAssetStore()
     @StateObject private var engine = EnginePadModel()
     @StateObject private var cloudSaves = EngineCloudSaveStore()
+    @StateObject private var settingsSync = EngineSettingsSyncStore(platform: .mobile)
     /// Before the settings sheet or the launch plan reads the saved choices.
     init() {
         if EngineLaunchPreferences.migrate(.pad).applied { NSLog("[launch-graphics] Native at the display maximum applied once") }
     }
     var body: some Scene {
         WindowGroup {
-            EnginePadLibraryView(assets: assets, engine: engine, cloudSaves: cloudSaves, input: engine.input)
-                .preferredColorScheme(.dark)
-                .tint(EngineLibraryTheme.accent)
+            EnginePadLibraryView(assets: assets, engine: engine, cloudSaves: cloudSaves, settingsSync: settingsSync, input: engine.input)
         }
     }
 }
@@ -34,6 +33,7 @@ private struct EnginePadLibraryView: View {
     @ObservedObject var assets: EngineAssetStore
     @ObservedObject var engine: EnginePadModel
     @ObservedObject var cloudSaves: EngineCloudSaveStore
+    @ObservedObject var settingsSync: EngineSettingsSyncStore
     @ObservedObject var input: EnginePadInputRouter
     @ObservedObject private var artwork = EngineLibraryArtworkStore.shared
     @State private var showingImport = false
@@ -44,7 +44,7 @@ private struct EnginePadLibraryView: View {
     @State private var showingCloudSaves = false
     @State private var preparingPlay = false
     @State private var importError: String?
-    private let accent = EngineLibraryTheme.accent
+    private let accent = Color.accentColor
     private let deviceName = UIDevice.current.localizedModel
     private let productName = EnginePadBrand.productName
     /// iPhone landscape: the card's Play status must stay above the fold.
@@ -64,6 +64,12 @@ private struct EnginePadLibraryView: View {
         assets.phase == .ready && (engine.canStart || engine.isActive) && !cloudSaves.isBusy && !preparingPlay
     }
 
+    /// Native app controls accompany Halo's actual pause menu, never live
+    /// gameplay or the front-end title screen. Visibility owns no input lease.
+    private var showsGameControls: Bool {
+        showingGame && scenePhase == .active && engine.pauseMenuActive && !appSurfaceVisible
+    }
+
     var body: some View {
         NavigationStack {
             GeometryReader { proxy in
@@ -76,18 +82,22 @@ private struct EnginePadLibraryView: View {
                 .scrollIndicators(.hidden)
                 .scrollBounceBehavior(.basedOnSize)
             }
-            .background { EngineLibraryBackground().ignoresSafeArea() }
+            .background(Color(uiColor: .systemGroupedBackground).ignoresSafeArea())
             .safeAreaInset(edge: .bottom, spacing: 0) {
                 Text("Build \(Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String ?? "—")")
                     .font(.caption2).foregroundStyle(.secondary)
                     .accessibilityIdentifier("launcher.buildNumber")
                     .frame(maxWidth: .infinity).padding(.vertical, 8)
-                    .background(EngineLibraryTheme.background.opacity(0.92))
+                    .background(Color(uiColor: .systemGroupedBackground))
             }
-            .navigationTitle("Library")
-            .navigationBarTitleDisplayMode(.inline)
+            .navigationTitle(productName)
+            .navigationBarTitleDisplayMode(compact ? .inline : .large)
             .toolbar {
-                ToolbarItem(placement: .principal) { libraryMenu }
+                ToolbarItemGroup(placement: .topBarTrailing) {
+                    Button("Settings", systemImage: "gearshape") { showingSettings = true }
+                        .accessibilityIdentifier("launcher.settings")
+                    libraryMenu
+                }
             }
         }
         .libraryArtworkImporter()
@@ -116,7 +126,11 @@ private struct EnginePadLibraryView: View {
         .onChange(of: uiOwnsInput, initial: true) { _, owned in engine.uiOwnsInput = owned }
         // Keyboard/mouse/touch: only an active scene (not .inactive) and the
         // visible game with no app surface over it own that input.
-        .onChange(of: scenePhase, initial: true) { _, phase in input.update(sceneActive: phase == .active) }
+        .onChange(of: scenePhase, initial: true) { _, phase in
+            bindSettingsSync()
+            settingsSync.setActive(phase == .active)
+            input.update(sceneActive: phase == .active)
+        }
         .onChange(of: showingGame && !appSurfaceVisible, initial: true) { _, visible in input.update(gameVisible: visible) }
         .task {
             bindRuntimeGate()
@@ -125,51 +139,52 @@ private struct EnginePadLibraryView: View {
         // A UIKit full-screen container (not fullScreenCover) so the game can
         // request pointer lock; the content below is unchanged SwiftUI.
         .background(EnginePadGamePresenter(isPresented: showingGame, input: input) {
-            ZStack(alignment: .topTrailing) {
-                Color.black.ignoresSafeArea()
-                EngineFrameView().ignoresSafeArea()
-                EnginePadInputSurfaceView(router: input).ignoresSafeArea()
-                if input.touchControlsEnabled {
-                    EnginePadTouchOverlay(input: input).ignoresSafeArea()
-                }
-                HStack {
-                    Button { showingGame = false } label: { Label("Library", systemImage: "square.grid.2x2") }
-                    Button { showingGameSettings = true } label: { Label("Settings", systemImage: "slider.horizontal.3") }
-                    if engine.state == ENGINEVISION_RUNNING {
-                        // Halo's Escape (pause/back) for keyboards without an Esc key, and touch.
-                        Button { input.sendPause() } label: { Label("Pause", systemImage: "pause") }
+            NavigationStack {
+                ZStack {
+                    Color.black.ignoresSafeArea()
+                    EngineFrameView().ignoresSafeArea()
+                    EnginePadInputSurfaceView(router: input).ignoresSafeArea()
+                    if input.touchControlsEnabled {
+                        EnginePadTouchOverlay(input: input).ignoresSafeArea()
                     }
-                    if input.mouseConnected || input.pointerSeen {
-                        Button { input.togglePointerCapture() } label: {
-                            Label(input.pointerReleased ? "Capture pointer" : "Release pointer",
-                                  systemImage: input.pointerReleased ? "cursorarrow.rays" : "cursorarrow")
+                    if engine.state == ENGINEVISION_STARTING {
+                        ProgressView("Starting Halo…")
+                            .tint(.white).foregroundStyle(.white)
+                            .padding(24)
+                            .background(.black.opacity(0.85), in: RoundedRectangle(cornerRadius: 12))
+                    }
+                    if engine.state == ENGINEVISION_FAILED || engine.state == ENGINEVISION_STOPPED {
+                        ViewThatFits(in: .vertical) {
+                            stoppedCard
+                            ScrollView { stoppedCard }.scrollBounceBehavior(.basedOnSize)
                         }
-                        .accessibilityHint("Command-L also releases or captures the pointer")
-                    }
-                }
-                // iPhone pillarbox margins are narrow; icons keep the 4:3 picture clear.
-                .labelStyle(EnginePadOverlayLabelStyle(iconOnly: compact))
-                .buttonStyle(.bordered).padding(compact ? 8 : 16).background(.ultraThinMaterial, in: Capsule())
-                .padding(compact ? 8 : 16)
-                if engine.state == ENGINEVISION_STARTING {
-                    ProgressView("Starting Halo…").padding(24).background(.regularMaterial, in: RoundedRectangle(cornerRadius: 18))
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
-                }
-                if engine.state == ENGINEVISION_FAILED || engine.state == ENGINEVISION_STOPPED {
-                    // Centered when it fits; scrolls only in a short iPhone window.
-                    ViewThatFits(in: .vertical) {
-                        stoppedCard
-                        ScrollView { stoppedCard }.scrollBounceBehavior(.basedOnSize)
                     }
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                }
+                .navigationTitle("Paused")
+                .navigationBarTitleDisplayMode(.inline)
+                .toolbar(showsGameControls ? .visible : .hidden, for: .navigationBar)
+                .toolbarBackground(Color(uiColor: .systemBackground), for: .navigationBar)
+                .toolbarBackground(.visible, for: .navigationBar)
+                .toolbar {
+                    if showsGameControls {
+                        ToolbarItem(placement: .topBarLeading) {
+                            Button("Library", systemImage: "square.grid.2x2") { showingGame = false }
+                                .accessibilityIdentifier("game.library")
+                        }
+                        ToolbarItemGroup(placement: .topBarTrailing) {
+                            Button("Settings", systemImage: "gearshape") { showingGameSettings = true }
+                                .accessibilityIdentifier("game.settings")
+                            Button("Resume", systemImage: "play.fill") { input.sendPause() }
+                                .accessibilityIdentifier("game.resume")
+                        }
+                    }
                 }
             }
-            .persistentSystemOverlays(.hidden)
+            .persistentSystemOverlays(engine.pauseMenuActive ? .automatic : .hidden)
             .sheet(isPresented: $showingGameSettings) { settings }
             .onAppear { UIApplication.shared.isIdleTimerDisabled = true }
             .onDisappear { UIApplication.shared.isIdleTimerDisabled = false }
-            .preferredColorScheme(.dark)
-            .tint(EngineLibraryTheme.accent)
         })
         .fileImporter(isPresented: $showingImport, allowedContentTypes: [.folder]) { result in
             guard !cloudSaves.isBusy, engine.canStart else { return }
@@ -203,14 +218,13 @@ private struct EnginePadLibraryView: View {
                 .buttonStyle(.borderedProminent).controlSize(.large)
         }
         .padding(compact ? 18 : 28).frame(maxWidth: 520)
-        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 24))
+        .background(Color(uiColor: .secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 12))
         .padding(compact ? 12 : 32)
     }
 
     private var libraryMenu: some View {
         Menu {
             EngineLibraryArtworkActions()
-            Button("Settings", systemImage: "slider.horizontal.3") { showingSettings = true }
             Button("Cloud Saves", systemImage: "icloud") { showingCloudSaves = true }
             Button("Game data", systemImage: "externaldrive") { showingDataStatus = true }
             if !assets.hasBundledPayload {
@@ -224,11 +238,10 @@ private struct EnginePadLibraryView: View {
                 .disabled(!engine.canStart || cloudSaves.isBusy)
             }
         } label: {
-            EngineLibraryTitleLabel()
+            Label("More", systemImage: "ellipsis.circle")
         }
-        .menuStyle(.button)
-        .buttonStyle(.plain)
-        .accessibilityLabel("\(productName) menu")
+        .accessibilityLabel("More library options")
+        .accessibilityIdentifier("launcher.more")
     }
 
     /// iPad (any orientation) and regular windows: one centered shelf, the
@@ -254,14 +267,29 @@ private struct EnginePadLibraryView: View {
     }
 
     private func gameCard(in size: CGSize) -> some View {
-        EngineLibraryGameCard(
-            coverWidth: coverWidth(in: size),
-            accessibilityLabel: shelfAccessibilityLabel,
-            enabled: !cloudSaves.isBusy && !preparingPlay,
-            action: openGame
-        ) {
-            shelfStatus
+        let width = coverWidth(in: size)
+        return Button(action: openGame) {
+            VStack(alignment: .leading, spacing: 12) {
+                EngineLibraryCover().frame(width: width, height: width * 1.5)
+                VStack(alignment: .leading, spacing: 6) {
+                    Text("Halo: Combat Evolved")
+                        .font(.headline).foregroundStyle(.primary)
+                    shelfStatus.font(.subheadline).foregroundStyle(.secondary)
+                }
+                .padding(.horizontal, 4)
+                .padding(.bottom, 4)
+            }
+            .frame(width: width, alignment: .leading)
+            .padding(12)
+            .background(Color(uiColor: .secondarySystemGroupedBackground),
+                        in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+            .contentShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
         }
+        .buttonStyle(.plain)
+        .disabled(cloudSaves.isBusy || preparingPlay)
+        .accessibilityLabel(shelfAccessibilityLabel)
+        .accessibilityIdentifier("launcher.play")
+        .contextMenu { EngineLibraryArtworkActions() }
     }
 
     private func coverWidth(in size: CGSize) -> CGFloat {
@@ -384,7 +412,11 @@ private struct EnginePadLibraryView: View {
     }
 
     private var settings: some View {
-        EnginePadSettingsView(assets: assets, engine: engine, cloudSaves: cloudSaves)
+        EnginePadSettingsView(assets: assets, engine: engine, cloudSaves: cloudSaves, settingsSync: settingsSync)
+    }
+    private func bindSettingsSync() {
+        settingsSync.engineIsIdle = { enginevision_runtime_state() == ENGINEVISION_IDLE }
+        settingsSync.didApply = { _ in EngineSyncedPreferencesRuntime.applyMobile() }
     }
     private func openGame() {
         guard !cloudSaves.isBusy, !preparingPlay else { return }
@@ -410,6 +442,9 @@ private struct EnginePadLibraryView: View {
             defer { preparingPlay = false }
             let allowed = await cloudSaves.prepareForPlay(gameRoot: assets.rootURL, engineActive: false)
             engine.refresh()
+            // A save check can outlive the foreground scene. Never start an
+            // invisible engine after the player has left this app.
+            guard scenePhase == .active else { return }
             guard allowed, cloudSaves.migrationReady, !cloudSaves.isBusy,
                   assets.phase == .ready, engine.canStart,
                   enginevision_runtime_state() == ENGINEVISION_IDLE else {
@@ -417,17 +452,13 @@ private struct EnginePadLibraryView: View {
                 return
             }
             // Any start attempt ends reconciliation for this process.
+            // Apply downloaded settings while idle without waiting for a cloud
+            // request; a slow/offline account must not hold the Play action.
+            settingsSync.applyPendingIfIdle()
+            EngineSyncedPreferencesRuntime.applyMobile()
             cloudSaves.stopCloudMonitoring()
             engine.start(root: assets.rootURL)
             if engine.isActive { showingGame = true }
         }
-    }
-}
-
-private struct EnginePadOverlayLabelStyle: LabelStyle {
-    let iconOnly: Bool
-    func makeBody(configuration: Configuration) -> some View {
-        if iconOnly { Label(configuration).labelStyle(.iconOnly) }
-        else { Label(configuration).labelStyle(.titleAndIcon) }
     }
 }

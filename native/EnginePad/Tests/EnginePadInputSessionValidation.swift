@@ -229,6 +229,95 @@ import CoreGraphics
         _ = s.update(gameVisible: false)
         check(s.pause().isEmpty, "Pause ignored while app UI owns input")
 
-        print("PASS \(checks) input session lifecycle checks: ownership/presented/inactive fences, release-to-rearm quarantine, device generations, single key/pointer authority, edge-triggered Command-L, recapture, cancel, hover dedupe, touch (synthetic; no device)")
+        // Real pause temporarily frees the system cursor for app controls.
+        // A held trigger/click must not survive either edge or fire on Resume.
+        s = playing()
+        _ = s.update(pointerLocked: true)
+        _ = s.mouseButton(epoch: s.mouseEpoch, index: 0, down: true)
+        physicalButtons = [0]
+        out = s.update(gamePaused: true)
+        check(out.first == .release && out.contains(.pointerLockPreference(false)), "pause releases before OS lock notification")
+        check(s.gameOwnsInput && !s.pointerReleased && !s.prefersPointerLock, "pause keeps Halo menu input and capture intent")
+        check(s.mouseMoved(epoch: s.mouseEpoch, dx: 8, dy: 4).isEmpty, "late raw motion during unlock cannot move aim")
+        check(s.mouseButton(epoch: s.mouseEpoch, index: 1, down: true).isEmpty, "late raw button during unlock cannot fire")
+        _ = s.mouseButton(epoch: s.mouseEpoch, index: 1, down: false)
+        _ = s.update(pointerLocked: false)
+        physicalButtons = []
+        _ = s.mouseButton(epoch: s.mouseEpoch, index: 0, down: false)
+        check(s.pointerSource == .pointerUIKit, "paused pointer uses UIKit cursor")
+        check(s.pointerBegan(70, at: p, buttons: 1).contains(.button(.pointerUIKit, index: 0, down: true)), "menu can be clicked without recapturing")
+        physicalButtons = [0]
+        out = s.update(gamePaused: false)
+        check(out.first == .release && out.contains(.pointerLockPreference(true)), "resume restores prior capture request")
+        check(s.pointerMoved(70, to: CGPoint(x: 50, y: 50), buttons: 1).isEmpty, "resume drops old click stream")
+        _ = s.update(pointerLocked: true)
+        check(s.mouseButton(epoch: s.mouseEpoch, index: 0, down: true).isEmpty, "resume click quarantined until physical release")
+        physicalButtons = []
+        _ = s.mouseButton(epoch: s.mouseEpoch, index: 0, down: false)
+        check(s.mouseButton(epoch: s.mouseEpoch, index: 0, down: true) == [.button(.pointerGC, index: 0, down: true)], "fresh click fires normally after resume")
+        _ = s.mouseButton(epoch: s.mouseEpoch, index: 0, down: false)
+        _ = s.togglePointerCapture()
+        _ = s.update(pointerLocked: false)
+        _ = s.update(gamePaused: true)
+        check(s.pointerReleased && !s.prefersPointerLock, "user's released-cursor choice survives pause")
+        check(s.pointerBegan(71, at: p, buttons: 1).contains(.button(.pointerUIKit, index: 0, down: true)) && s.pointerReleased,
+              "paused menu click does not change user's release preference")
+        _ = s.pointerEnded(71, at: p)
+        _ = s.update(gamePaused: false)
+        check(s.pointerReleased && !s.prefersPointerLock, "resume preserves deliberate cursor release")
+        check(s.update(gamePaused: false).isEmpty, "repeated pause polls do not clear new input")
+
+        // A UIKit-only trackpad has no GC up callback. Preserve only enough
+        // stream identity across fences to observe its eventual release.
+        s = playing(mouse: false)
+        check(s.pointerBegan(80, at: p, buttons: 1) == [.button(.pointerUIKit, index: 0, down: true)], "UIKit-only primary begins")
+        _ = s.update(gamePaused: true)
+        _ = s.update(gamePaused: false)
+        _ = s.focusLost()
+        check(s.quarantinedButtons.contains(0), "multiple fences retain a still-held UIKit button")
+        check(s.pointerBegan(80, at: p, buttons: 1).isEmpty, "late begin cannot revive a retired stream")
+        check(s.pointerMoved(80, to: CGPoint(x: 200, y: 300), buttons: 1).isEmpty, "old UIKit motion and down remain inert")
+        check(s.hover(.changed, at: p).isEmpty && s.hover(.changed, at: CGPoint(x: 90, y: 80)).isEmpty, "hover cannot bypass a fenced drag")
+        check(s.pointerEnded(80, at: CGPoint(x: 400, y: 500)).isEmpty && !s.quarantinedButtons.contains(0), "UIKit-only end rearms without motion or a click")
+        _ = s.focusLost()
+        check(!s.quarantinedButtons.contains(0), "later fence cannot resurrect released UIKit hold")
+        check(s.pointerBegan(81, at: p, buttons: 1) == [.button(.pointerUIKit, index: 0, down: true)], "fresh UIKit click works after end")
+        _ = s.pointerEnded(81, at: p)
+
+        // Cancellation is also a release, including while app UI owns input.
+        _ = s.pointerBegan(82, at: p, buttons: 2)
+        _ = s.update(gameVisible: false)
+        check(s.pointerCancelled(82).isEmpty && !s.quarantinedButtons.contains(1), "cancelled fenced stream only clears the old hold")
+        _ = s.update(gameVisible: true)
+        check(s.pointerMoved(82, to: CGPoint(x: 300, y: 400), buttons: 2).isEmpty, "cancelled old stream never moves again")
+        check(s.pointerBegan(83, at: p, buttons: 2) == [.button(.pointerUIKit, index: 1, down: true)], "fresh secondary click works after cancellation")
+        _ = s.pointerEnded(83, at: p)
+
+        // Button-mask updates may release just one button on a retired stream.
+        // A new click must survive the old stream's later end.
+        _ = s.pointerBegan(84, at: p, buttons: 3)
+        _ = s.focusLost()
+        check(s.pointerMoved(84, to: CGPoint(x: 300, y: 400), buttons: 2).isEmpty, "retired mask change adds no movement")
+        check(!s.quarantinedButtons.contains(0) && s.quarantinedButtons.contains(1), "partial release only rearms its own button")
+        check(s.pointerBegan(85, at: p, buttons: 1) == [.button(.pointerUIKit, index: 0, down: true)], "primary works while old secondary is held")
+        check(s.pointerEnded(84, at: p).isEmpty && !s.quarantinedButtons.contains(1), "old end releases only its remaining secondary")
+        _ = s.focusLost()
+        check(s.quarantinedButtons == [0], "old end cannot clear a newer primary hold")
+        _ = s.pointerEnded(85, at: p)
+        check(s.quarantinedButtons.isEmpty, "all UIKit-only holds can rearm")
+
+        // GC can report the same physical release before UIKit ends the
+        // active stream. A fence between those callbacks must not resurrect it.
+        s = playing()
+        _ = s.update(gamePaused: true)
+        _ = s.pointerBegan(86, at: p, buttons: 1)
+        _ = s.mouseButton(epoch: s.mouseEpoch, index: 0, down: false)
+        _ = s.focusLost()
+        check(!s.quarantinedButtons.contains(0), "GC up already retired the UIKit held cache before a fence")
+        check(s.pointerMoved(86, to: CGPoint(x: 500, y: 500), buttons: 1).isEmpty && s.pointerEnded(86, at: p).isEmpty, "late UIKit tail after GC up is inert")
+        check(s.pointerBegan(87, at: p, buttons: 1) == [.button(.pointerUIKit, index: 0, down: true)], "new menu click works after GC-first release")
+        _ = s.pointerEnded(87, at: p)
+
+        print("PASS \(checks) input session lifecycle checks: ownership/presented/inactive fences, release-to-rearm quarantine, device generations, single key/pointer authority, edge-triggered Command-L, recapture, cancel, hover dedupe, touch, pause pointer release, UIKit-only retired stream releases (synthetic; no device)")
     }
 }

@@ -31,7 +31,7 @@ are the ones the existing controller bridge already emits (`dinput8.c`
 Command (⌘) chords stay with iPadOS and never reach Halo, except ⌘. which is
 Escape for keyboards without an Esc key (iPadOS can also remap Caps Lock to
 Escape in Settings › General › Keyboard › Hardware Keyboard › Modifier Keys).
-⌘L releases or recaptures the pointer. The mouse wheel is not mapped.
+⌘L releases or recaptures the pointer. Pausing temporarily releases it for app controls without changing that preference. Resuming discards held clicks until released. The mouse wheel is not mapped.
 
 ## Gameplay prompts
 
@@ -53,7 +53,7 @@ During gameplay, with no supported controller or physical keyboard connected:
 - Zoom, Jump, Crouch, Reload, Use/pickup, Swap, Grenade, Type (grenade selection),
   Melee and Light (flashlight) provide the remaining core actions. Hold Crouch
   to duck, or Use when Halo requests a held interaction.
-- The existing toolbar provides Pause, Library and Settings.
+- The touch Pause button opens Halo’s pause menu. Native Library, Settings and Resume controls appear only while paused.
 
 Connecting a supported controller or physical keyboard releases all held touch
 actions and hides the gameplay overlay. Disconnecting the last one restores it

@@ -10,6 +10,7 @@ This repository contains source. Supply your own supported retail Halo PC instal
 
 - **Vision Pro:** start in a window, then Expand into immersive play. Closing immersive returns to the same running game window. PSVR2 Sense controllers provide tracked weapon aiming; a normal gamepad remains supported.
 - **iPad and iPhone:** a native Metal app with controller or keyboard/mouse input. Without a supported controller or physical keyboard, on-screen controls provide movement, aiming and the main gameplay actions. See the [mobile controls](native/EnginePad/INPUT.md).
+- **Settings:** supported app preferences merge through iCloud, with mobile quality choices shared by iPhone/iPad and headset calibration kept local. Incoming preferences apply before a new game session.
 - **Saves:** local saves plus optional iCloud sync, immutable recovery snapshots, and explicit conflict handling. After gameplay, fully close and reopen the app to sync before switching devices. See [save setup and migration](docs/BUILDING.md).
 
 These are development builds. Physical iPad/iPhone gameplay and the live cross-device iCloud roundtrip have not yet been accepted. Source tests and compilation are separate from physical-device gameplay acceptance. See [validation](docs/VALIDATION.md) and [known issues](docs/KNOWN_ISSUES.md) for the tested boundaries.

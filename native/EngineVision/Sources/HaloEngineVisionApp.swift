@@ -135,6 +135,7 @@ final class EngineAppSession: ObservableObject {
     let senseSettings = EngineSenseSettingsModel()
     let physicalSettings = EngineSensePhysicalSettingsModel.shared /* applies optional physical settings at launch */
     let cloudSaves = EngineCloudSaveStore()
+    let settingsSync = EngineSettingsSyncStore(platform: .vision)
     @Published private(set) var immersiveActive = false
     @Published private(set) var immersiveSceneGeneration: UInt64 = 0
     private var sceneTransitions = EngineSceneTransitions()
@@ -179,6 +180,15 @@ final class EngineAppSession: ObservableObject {
             return enginevision_runtime_state() != ENGINEVISION_IDLE
         }
         cloudSaves.objectWillChange.sink { [weak self] _ in self?.objectWillChange.send() }.store(in: &childChanges)
+        settingsSync.engineIsIdle = { enginevision_runtime_state() == ENGINEVISION_IDLE }
+        settingsSync.didApply = { [weak self] _ in
+            guard let self else { return }
+            self.settings.reloadFromDefaults()
+            self.graphics.reloadFromDefaults()
+            self.senseSettings.reloadFromDefaults()
+            self.physicalSettings.reloadFromDefaults()
+        }
+        settingsSync.objectWillChange.sink { [weak self] _ in self?.objectWillChange.send() }.store(in: &childChanges)
         // Another device changed the cloud save: reconcile only before Halo
         // has ever started, while the app is active and game data is ready.
         cloudSaves.cloudChanges.sink { [weak self] in
@@ -246,6 +256,7 @@ final class EngineAppSession: ObservableObject {
     /// it is retired permanently only just before the engine starts.
     func setApplicationActive(_ active: Bool) {
         applicationActive = active
+        settingsSync.setActive(active)
         if active && enginevision_runtime_state() == ENGINEVISION_IDLE {
             cloudSaves.startCloudMonitoring()
             syncSavesIfIdle()
@@ -301,6 +312,7 @@ final class EngineAppSession: ObservableObject {
             }
             // The cloud watcher is retired for the rest of this process just
             // before the engine starts; saves then sync on the next launch.
+            self.settingsSync.applyPendingIfIdle()
             self.cloudSaves.stopCloudMonitoring()
             self.presentationMessage = nil
             EngineImmersiveTrace.shared.record("play.startingEngine")

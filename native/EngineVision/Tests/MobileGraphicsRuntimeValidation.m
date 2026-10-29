@@ -191,11 +191,11 @@ static void window_orientation_drives_native(void) {
     ipad13(); view_w = 900; view_h = 1200; stored_resolution = @"native"; stored_rate = @"display";
     EngineMobileGraphicsPlan plan;
     assert(enginevision_mobile_prepare_launch(&plan) == 0);
-    assert(plan.render_width == 896 && plan.render_height == 672 && plan.view_width == 900 && plan.view_height == 1200);
+    assert(plan.render_width == 896 && plan.render_height == 1195 && plan.view_width == 900 && plan.view_height == 1200);
     assert(plan.render_width <= plan.view_width && plan.render_height <= plan.view_height);
-    assert(!strcmp(getenv("HALO_CMDLINE_EXTRA"), "-vidmode 896,672,60"));
+    assert(!strcmp(getenv("HALO_CMDLINE_EXTRA"), "-vidmode 896,1195,60"));
     /* Drawables are estimated at the whole panel, which the window can grow to. */
-    assert(plan.memory_steady_bytes == 6ull * 896 * 672 * 4 + 6 * gpu(896ull * 672 * 4) + 3 * gpu(FRAME13) + ARENAS);
+    assert(plan.memory_steady_bytes == 6ull * 896 * 1195 * 4 + 6 * gpu(896ull * 1195 * 4) + 3 * gpu(FRAME13) + ARENAS);
 }
 
 static void admitted_existing_vidmode_is_kept(void) {

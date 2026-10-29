@@ -17,13 +17,20 @@ and the verified texture/shader packs come from the existing private `.setup`
 inputs.
 
 The launcher includes game-data preparation, graphics options, controller status,
-the native About page, and the shared Files cloud-save interface. The in-game
-Settings button keeps these controls accessible during play. Graphics changes
-apply when the app is fully closed and reopened. The original 4:3 game picture
-is fitted to the display; the app does not stretch the HUD. Build 124 selects
+the native About page, and the shared Files cloud-save interface. The native pause toolbar provides Library, Settings and Resume only while Halo is paused. Graphics changes
+apply when the app is fully closed and reopened. Build 130 renders the world at
+the landscape window’s launch aspect, keeping weapon crosshairs proportional.
+Other legacy HUD/menu art retains the original PC layout. Stage Manager resizing
+requires reopening to adopt a new aspect. Build 124 selects
 Native resolution and Display maximum once on its first launch. Any lower
 settings chosen afterward are retained. The actual frame rate depends on
 the device and scene.
+
+App settings sync through a separate, per-setting iCloud document history.
+Mobile quality choices are shared between iPad and iPhone; the actual pixel
+dimensions adapt locally. Halo’s saved profiles and bindings remain part of
+cloud saves. Downloaded app settings apply only before engine startup and do
+not interrupt a running session. Headset calibration and local artwork stay local.
 
 ## Build
 

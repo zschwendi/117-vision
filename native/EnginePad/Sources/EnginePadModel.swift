@@ -8,6 +8,8 @@ final class EnginePadModel: ObservableObject {
     @Published private(set) var status = "Ready when you are."
     @Published private(set) var controllerName: String?
     @Published private(set) var frameSize = ""
+    /// Original in-game pause/widgets only; the title screen does not qualify.
+    @Published private(set) var pauseMenuActive = false
     private var timer: Timer?
     private let haptics = EngineHaptics()
     /// Hardware keyboard, mouse/trackpad and touch (device_input.h). Separate
@@ -59,6 +61,8 @@ final class EnginePadModel: ObservableObject {
         input.update(engineActive: state == ENGINEVISION_RUNNING)
         // RUNNING also includes Halo's title and pause menus. Use the original
         // front-end/pause-widget state, including non-pausing multiplayer UI.
+        pauseMenuActive = state == ENGINEVISION_RUNNING && enginevision_pause_menu_active() != 0
+        input.update(gamePaused: pauseMenuActive)
         input.update(nativeMenuActive: state != ENGINEVISION_RUNNING || enginevision_menu_active() != 0)
         input.refreshTouchBindings()
     }

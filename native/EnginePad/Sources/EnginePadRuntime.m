@@ -30,7 +30,7 @@ void enginepad_prepare(void) {
 int enginepad_start(const char *game_root) {
     enginepad_prepare();
     NSUserDefaults *preferences=NSUserDefaults.standardUserDefaults;
-    /* Resolution (a preset, or the largest 4:3 game viewport in this
+    /* Resolution (an adaptive quality budget, or the native-aspect viewport in this
      * window), the frame-rate request and Halo's time-update throttle lift,
      * measured on this main thread (mobile_graphics.h, frame_limit.h). A
      * refused plan (unsafe or uncommittable command line) must not start. */

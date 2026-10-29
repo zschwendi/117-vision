@@ -40,7 +40,8 @@ SHARED_SWIFT = ["EngineAssets.swift", "EngineFrameView.swift", "EngineFrameTextu
                 "EngineLibraryStyle.swift", "EngineLibraryArtwork.swift",
                 "EngineHaptics.swift", "EngineAboutView.swift", "EngineGraphicsModsView.swift",
                 "EngineSaveArchive.swift", "EngineCloudSaves.swift", "EngineCloudSavesView.swift",
-                "EngineLaunchPreferences.swift"]
+                "EngineLaunchPreferences.swift", "EngineSyncedPreferences.swift",
+                "EngineSettingsSync.swift", "EngineSyncedPreferencesRuntime.swift"]
 HOST_C = ["host.c", "shims_kernel32.c", "shims_misc.c", "winsock.c", "directsound.c", "directsound_mixer.c",
           "vorbis_shim.c", "d3d9.c", "texture_decode.c", "metalshader.c", "dinput8.c", "ddraw.c",
           "resources.c", "overrides.c", "threading.c", "pointer.c", "haptics.c", "halo_settings.c"]

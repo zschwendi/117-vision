@@ -18,6 +18,28 @@ the previous helmet cover.
 The exact reviewed icon paths and hashes are in `APP_ICON_ART` in
 `tools/check_repository_hygiene.py`.
 
+## Gameplay screenshots
+
+The three `117-sense-*.png` stills in the main README come from the project
+author's own Vision Pro gameplay recording on October 25, 2026. They show an
+earlier development build, not proof of the latest build's behavior.
+
+| File | Scene | Recording position |
+| --- | --- | --- |
+| `117-sense-rifle-combat.png` | Rifle combat with a visible hand and Sense controller | About 1:23.77 |
+| `117-sense-sniper-scope.png` | Sniper scope and visible Sense controller | About 2:46.45 |
+| `117-sense-grenade-throw.png` | Hand/controller during a throwing gesture | About 3:09.73 |
+
+Frames were scaled from 1920 × 1080 to 1280 × 720 and saved as optimized RGB
+PNGs with metadata removed. There is no AI generation, cropping or color edit.
+The exact reviewed PNG paths and SHA-256 hashes are in `DOCUMENTATION_ART` in
+`tools/check_repository_hygiene.py`.
+
+These illustrative screenshots contain Halo: Combat Evolved game imagery.
+Game-content rights remain with their respective owners. The screenshots are
+separate from the MIT-licensed code and original app artwork; they are not
+reusable game-data assets and imply no official endorsement.
+
 ## Historical upstream repository header
 
 `master-chef-header.png` is generated documentation artwork, created with the

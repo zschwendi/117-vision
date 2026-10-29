@@ -1,5 +1,8 @@
 # Guided setup
 
+For the complete first-time path, including iPad/iPhone installation and shared
+iCloud setup, start with [Install 117 from scratch](INSTALL.md).
+
 This is 117, an independent continuation of Master Chef. This repository distributes source; references to an upstream Complete bundle describe a separate upstream artifact, not a 117 binary release.
 
 Run this on an Apple Silicon Mac. You supply your own **retail Halo: Combat
@@ -25,7 +28,7 @@ picker. To check the Mac and ISO without installing anything:
 
 - An Apple Silicon Mac, Xcode with the visionOS platform/SDK, and at least
   **12 GiB free space**, in addition to the ISO. The app targets visionOS 26.0;
-  Build 121 was built with SDK 27.0.
+  Build 130 used the visionOS 27.0 SDK.
 - Python 3.12 and XcodeGen. If you use Homebrew:
   `brew install python@3.12 xcodegen`. Setup installs the pinned Python
   dependencies into this checkout's `.venv` automatically.
@@ -44,8 +47,9 @@ picker. To check the Mac and ISO without installing anything:
   links may no longer resolve. This tool does not fetch arbitrary replacement
   executables or redistribute the patch. An already updated installation is
   also supported.
-- Your Apple account in Xcode and a paired Vision Pro with Developer Mode
-  enabled. Pair a game controller for playing.
+- An enrolled Apple Developer Program team in Xcode and a paired Vision Pro
+  with Developer Mode enabled. The unchanged app uses iCloud capabilities that
+  a free Personal Team cannot provision; see [signing prerequisites](INSTALL.md#1-get-the-prerequisites). Pair a game controller for playing.
 
 Custom Edition, Anniversary, MCC, Xbox discs, and modified executables are
 not supported by this translator. The installed executable must match the

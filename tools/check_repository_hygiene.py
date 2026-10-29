@@ -12,9 +12,13 @@ import sys
 
 ROOT = Path(__file__).resolve().parents[1]
 SKIP = {'.git', '.build', '.setup', '__pycache__', '.venv', 'game', 'build', 'logs', 'dist', 'DerivedData'}
-# Explicitly reviewed generated documentation art, never a general binary
-# allowlist. Changing this image requires reviewing and updating its digest.
+# Explicitly reviewed documentation imagery, never a general binary allowlist.
+# Includes generated historical art and recorded gameplay screenshots. Any image
+# change requires visual review and an updated digest at its exact path.
 DOCUMENTATION_ART = {
+    'docs/assets/117-sense-grenade-throw.png': '412cfb28c1a0a09130dc87fce0203315f06b1465313e0e23daadd9bda1804ce8',
+    'docs/assets/117-sense-rifle-combat.png': '0667a42b8c750001c83a0d0d738f14097de6495440ef83be5fc3c6e87fef06d9',
+    'docs/assets/117-sense-sniper-scope.png': '3f226f1c2d551b6176bfecc5bc6ad182c2ca85f5a4688449d687a6c74e4dd114',
     'docs/assets/master-chef-header.png': 'e15bc1102ca36f40e357c39d48149445f94115971a9469406f7e67c9f442a386',
 }
 # Original generated app artwork is also admitted only at its reviewed path and

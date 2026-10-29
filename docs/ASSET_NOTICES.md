@@ -18,6 +18,10 @@ trademarks, third-party mod artwork or shader source.
   GPL-3.0 license. That ZIP is not stored in this repository. Upstream commit:
   `ce22b5456ed29ae0c53cf19711085b4b9ee93d6a` at
   [Sledmine/censhine](https://github.com/Sledmine/censhine/tree/1.0.0).
+- **Gameplay screenshots**: author-recorded Vision Pro footage used to illustrate
+  the project. Depicted Halo game imagery retains its existing rights and is not
+  covered by the code license. Capture/processing notes are in
+  [docs/assets/README.md](assets/README.md).
 - **Generated repository header**: provenance and exact edit prompt are in
   [docs/assets/README.md](assets/README.md).
 - **Generated app artwork and icons**: source paths and available provenance

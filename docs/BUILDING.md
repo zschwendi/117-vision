@@ -1,6 +1,8 @@
 # Building and installing
 
-For the easiest route, use [the guided ISO setup](SETUP.md):
+New here? Start with [installing 117 from scratch](INSTALL.md), including Mac prerequisites, game preparation, signing, both device targets and cloud saves.
+
+For the guided ISO route, use [the setup wizard](SETUP.md):
 `./setup.sh "/path/to/HALO.iso"`. [Agent-specific instructions](AGENT_SETUP.md)
 include a copy/paste prompt. The manual steps below remain available for
 existing installations and explicit signing workflows.
@@ -8,8 +10,9 @@ existing installations and explicit signing workflows.
 ## Requirements
 
 - An Apple Silicon Mac, Xcode with the visionOS SDK, and command-line tools.
-  The app targets visionOS 26.0. Build121 was built with the 27.0
-  SDK; older toolchain combinations have not been qualified.
+  The app targets visionOS 26.0. Build 130 used the 27.0 visionOS SDK;
+  other toolchain combinations have not been qualified. The supported signing
+  route uses an enrolled Apple Developer Program team; see [prerequisites](INSTALL.md#1-get-the-prerequisites).
 - Python 3.12 and the dependencies below. XcodeGen is needed for the Xcode
   project route. The direct SDK build does not require XcodeGen.
 - Your own Halo: Combat Evolved for PC retail disc or ISO and a valid product
@@ -96,8 +99,8 @@ Set the application's bundle identifier to one you control, select your
 team, and enable automatic signing in Xcode. The public default,
 `org.example.halovision`, is a placeholder. The CLI normally performs unsigned
 builds; an Xcode development run supplies a profile for your account.
-The project version is 1.0.28 (build 128), adding automatic mobile touch controls
-while preserving the current app artwork and existing save identities. See
+The project version is 1.0.30 (build 130), with adaptive mobile launch aspect,
+native pause-only mobile app controls and shared app-settings sync. See
 [validation](VALIDATION.md) for build and physical-device acceptance.
 Generated app artwork is included;
 see [artwork provenance](assets/README.md).
@@ -211,8 +214,8 @@ tracking, controller, stereo, or performance acceptance.
 
 ## iPad, iPhone and shared cloud saves
 
-One mobile target runs on iPad and iPhone (iOS/iPadOS 18+, landscape, extended
-controller). It uses the same game payload and save format as the visionOS app.
+One mobile target runs on iPad and iPhone (iOS/iPadOS 18+, landscape) with
+controller, keyboard/mouse and automatic touch input. It uses the same game payload and save format as the visionOS app.
 The original author’s defaults are bundle identifier
 `com.zephyrstudios.mastercheef.ipad` and the CloudDocuments container named by
 `MasterCheefCloudContainer`. New developers must configure their own identifiers

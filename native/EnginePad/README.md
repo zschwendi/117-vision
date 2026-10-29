@@ -34,6 +34,9 @@ not interrupt a running session. Headset calibration and local artwork stay loca
 
 ## Build
 
+Starting with a fresh checkout? Follow [Install 117 from scratch](../../docs/INSTALL.md)
+first for Mac prerequisites, owned-game preparation, signing and Xcode installation.
+
 After the existing setup readiness check and engine generation:
 
 ```sh

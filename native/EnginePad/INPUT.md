@@ -83,10 +83,10 @@ tap-to-click and the two-finger secondary click are iPadOS settings
 (Settings › General › Trackpad, or Trackpad & Mouse): a two-finger trackpad
 click is the system's secondary click, not finger counting by the game.
 
-The overlay **Library**/**Settings** buttons stay usable: tap them, or press
-⌘L (or the overlay pointer button) to release the pointer and click them. A
-click on the game recaptures the pointer without firing. Opening any app
-screen releases the lock automatically.
+Pause to reveal the native **Library**, **Settings** and **Resume** controls.
+Pausing releases the pointer so you can tap or click them; ⌘L also releases or
+recaptures it during gameplay. A click on the game recaptures the pointer
+without firing. Opening any app screen releases the lock automatically.
 
 ## Ownership and release
 

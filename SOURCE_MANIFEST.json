@@ -2,9 +2,9 @@
   "version": "1.0.30",
   "formatVersion": 1,
   "license": "MIT for original project code; third-party and asset notices retained",
-  "scope": "Source, documentation, generated app artwork and public configuration. Retail game content, translated executable output, private registration, saves, signed apps and runtime mod packs are excluded.",
-  "fileCount": 607,
-  "totalBytes": 13651908,
+  "scope": "Source, documentation including recorded gameplay screenshots, original app artwork and public configuration. Retail game files, translated executable output, private registration, saves, signed apps and runtime mod packs are excluded.",
+  "fileCount": 611,
+  "totalBytes": 15242509,
   "files": [
     {
       "path": ".github/ISSUE_TEMPLATE/bug_report.yml",
@@ -53,8 +53,8 @@
     },
     {
       "path": "README.md",
-      "bytes": 5461,
-      "sha256": "213d9c43f4f9511fc330a82c0633017cce6a15f24ae45f3ba469054aa1239efd"
+      "bytes": 7065,
+      "sha256": "6aea2da0c9cc79473a7d97b1134124212b24aaae73c0ff4c529772056f354638"
     },
     {
       "path": "THIRD_PARTY.md",
@@ -88,13 +88,13 @@
     },
     {
       "path": "docs/ASSET_NOTICES.md",
-      "bytes": 1816,
-      "sha256": "38d63b40bbd8da1ce21df5749e4833577785b823a7a669a93ca81304748ef8aa"
+      "bytes": 2087,
+      "sha256": "7f76b1e8a3912d922055f19e41ba429c8aea626c6b6a66acfe921d2a9978e432"
     },
     {
       "path": "docs/BUILDING.md",
-      "bytes": 14166,
-      "sha256": "cc0d2df5fc2e7494e0bc61b9cdd9edb8ff0f9d2699329dc940fa19cee76d2505"
+      "bytes": 14488,
+      "sha256": "f91868752e349f2b78ff672cba06e88e80b14d0936aabc8b47fdb95c2ec3a277"
     },
     {
       "path": "docs/COMPLETE_RELEASE.md",
@@ -117,6 +117,11 @@
       "sha256": "e0b675a48391c4c33e1bf4c70d80e6a9503871112eedeabc13ba5ccdb5d1d96a"
     },
     {
+      "path": "docs/INSTALL.md",
+      "bytes": 12864,
+      "sha256": "77e6909ae3336a15e7a1f4ba912cc658b31f37cb6d187fa51fb4eeaf18682337"
+    },
+    {
       "path": "docs/KNOWN_ISSUES.md",
       "bytes": 3861,
       "sha256": "1fc62fd03da32043aeb910b52aff379d970f784d59e28b2f56d4b81322d4d0e1"
@@ -128,8 +133,8 @@
     },
     {
       "path": "docs/SETUP.md",
-      "bytes": 9339,
-      "sha256": "89e46c300ca4684c9792f03b9e758a5c95e2cd044e10f77d4e14df0f9c2eb8b0"
+      "bytes": 9664,
+      "sha256": "f6261ef6e09fe38dcbb09063aa5d3cd368bb430643f9034d123047d56455bcb2"
     },
     {
       "path": "docs/VALIDATION.md",
@@ -142,9 +147,24 @@
       "sha256": "92d8c2cf4169be08a68be8e84ef953112dcb8e52250885c904e9b842a6941c3c"
     },
     {
+      "path": "docs/assets/117-sense-grenade-throw.png",
+      "bytes": 498958,
+      "sha256": "412cfb28c1a0a09130dc87fce0203315f06b1465313e0e23daadd9bda1804ce8"
+    },
+    {
+      "path": "docs/assets/117-sense-rifle-combat.png",
+      "bytes": 722664,
+      "sha256": "0667a42b8c750001c83a0d0d738f14097de6495440ef83be5fc3c6e87fef06d9"
+    },
+    {
+      "path": "docs/assets/117-sense-sniper-scope.png",
+      "bytes": 351795,
+      "sha256": "3f226f1c2d551b6176bfecc5bc6ad182c2ca85f5a4688449d687a6c74e4dd114"
+    },
+    {
       "path": "docs/assets/README.md",
-      "bytes": 3811,
-      "sha256": "32de7da90b981f5c4cde939c6833c8b7c9c52bc74585b19bb418a35d4e16bf97"
+      "bytes": 4972,
+      "sha256": "e9ae460862a79af928a82f13b295127a43e4eb92a61e1e4e699a157e3e004b64"
     },
     {
       "path": "docs/assets/master-chef-header.png",
@@ -1688,8 +1708,8 @@
     },
     {
       "path": "native/EnginePad/INPUT.md",
-      "bytes": 7444,
-      "sha256": "963737636bddafef82ccf83354e5b268529ed411107de07de9bcc330552425b8"
+      "bytes": 7481,
+      "sha256": "b2d27616b70f6e295660f551847366c747cf81396e75b3d9035584c3dc49e972"
     },
     {
       "path": "native/EnginePad/Info.plist",
@@ -1698,8 +1718,8 @@
     },
     {
       "path": "native/EnginePad/README.md",
-      "bytes": 5950,
-      "sha256": "494d490e122965569657504afed4dcb3584931bee930bf4da0d916c80da12966"
+      "bytes": 6125,
+      "sha256": "267de98bea6955d897e46d2ce19887c648ff2cd33a380f53fda3de67b2073955"
     },
     {
       "path": "native/EnginePad/Resources/Assets.xcassets/AppIcon.appiconset/117-plasma.png",
@@ -2843,8 +2863,8 @@
     },
     {
       "path": "tools/check_repository_hygiene.py",
-      "bytes": 4468,
-      "sha256": "5ae4aab7a1573045b5a99b371da5db6a2335c75fb2e7b4f2efbf7e71300788da"
+      "bytes": 4893,
+      "sha256": "7fc8d6a1a42a239d4047258961cdf1f194418e438a2e3b221d155ce607a18a03"
     },
     {
       "path": "tools/engine_reuse/decode.py",

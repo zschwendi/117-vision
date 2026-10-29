@@ -57,3 +57,7 @@ This project started from **[mitchaiet/master-chef](https://github.com/mitchaiet
 The original MIT [license](LICENSE) and copyright notice are retained. See [THIRD_PARTY.md](THIRD_PARTY.md) for dependency notices and [asset notices](docs/ASSET_NOTICES.md) for material with separate rights. Original game content is not covered by this repository's MIT license.
 
 Halo: Combat Evolved and related names/assets belong to their respective owners. 117 is not affiliated with or endorsed by Microsoft, Halo Studios, Bungie, Gearbox, Sony, or Apple.
+
+## Issues
+
+Found a reproducible bug or have a concrete feature request? [Check existing issues](https://github.com/zschwendi/117-vision/issues) first, then open an issue if needed. For bugs, include your device/OS, app version, steps to reproduce, expected and actual behavior, and relevant logs. For features, explain the use case. Please keep Issues focused on bugs and feature requests.

@@ -203,7 +203,7 @@ struct LaunchPreferencesValidation {
               "upscale key and its off value")
         check(source(pad + "EnginePadSettingsView.swift").contains("@AppStorage(EngineLaunchPreferences.padResolutionKey) private var resolution = EngineLaunchPreferences.padHighestResolution"),
               "pad resolution default")
-        check(source("tools/build_engine_ipad.py").contains("\"EngineLaunchPreferences.swift\"]"), "iPad build includes the helper")
+        check(source("tools/build_engine_ipad.py").contains("\"EngineLaunchPreferences.swift\""), "iPad build includes the helper")
 
         // Startup order: each App initializer migrates before SwiftUI creates
         // the state objects whose models read these keys; nothing else builds them.

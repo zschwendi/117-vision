@@ -4,7 +4,7 @@
   "license": "MIT for original project code; third-party and asset notices retained",
   "scope": "Source, documentation, generated app artwork and public configuration. Retail game content, translated executable output, private registration, saves, signed apps and runtime mod packs are excluded.",
   "fileCount": 607,
-  "totalBytes": 13651909,
+  "totalBytes": 13651908,
   "files": [
     {
       "path": ".github/ISSUE_TEMPLATE/bug_report.yml",
@@ -2378,8 +2378,8 @@
     },
     {
       "path": "native/EngineVision/Tests/LaunchPreferencesValidation.swift",
-      "bytes": 17910,
-      "sha256": "15593e13eee1a957107420e19805784f3c5120604fa2918bf6db58dd4f933f1f"
+      "bytes": 17909,
+      "sha256": "566da54cf72b082f07086de226a24c768735be258271909d7da00246309c467a"
     },
     {
       "path": "native/EngineVision/Tests/LayerAlignmentGPUValidation.swift",

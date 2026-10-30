@@ -1,5 +1,7 @@
 # Install 117 on iPhone or iPad
 
+**Paid Apple Developer account required to sign this iPhone/iPad IPA.**
+
 Download [117-iOS-130.1.ipa](https://github.com/zschwendi/117-vision/releases/tag/ios-v130.1-preview).
 This **one iOS IPA supports both iPhone and iPad** (native arm64, device families 1 and 2). Its minimum OS is **iOS/iPadOS 18.0**; that minimum does not guarantee enough RAM on every older device. Use the separate [Vision Pro guide](SIDELOADING.md) for visionOS.
 

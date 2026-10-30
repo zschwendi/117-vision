@@ -1,4 +1,4 @@
-**[Install without a Mac / download the IPA](docs/SIDELOADING.md)**
+**[Windows / Linux: download the IPA and follow the full installation guide](docs/SIDELOADING.md)**
 
 # 117
 
@@ -6,7 +6,7 @@
 
 117 is an unofficial native Apple port built on [Master Chef](https://github.com/mitchaiet/master-chef), with PSVR2 Sense tracked aiming, two-handed weapon support, physical interactions and optional dual wielding. The game runs on your device; you do not need a PC streaming it in the background.
 
-[**Install from scratch →**](docs/INSTALL.md) · [Controls](docs/CONTROLS.md) · [Mobile controls](native/EnginePad/INPUT.md) · [Known issues](docs/KNOWN_ISSUES.md)
+[**Windows / Linux IPA guide →**](docs/SIDELOADING.md) · [Mac source build](docs/INSTALL.md) · [Controls](docs/CONTROLS.md) · [Mobile controls](native/EnginePad/INPUT.md) · [Known issues](docs/KNOWN_ISSUES.md)
 
 ![Halo gameplay on Vision Pro with a visible hand and PSVR2 Sense controller aiming the assault rifle](docs/assets/117-sense-rifle-combat.png)
 
@@ -41,11 +41,24 @@ Sense tracking currently targets **on-foot campaign play**. Vehicles and turrets
 
 117 includes local saves, optional **iCloud save sync**, recovery snapshots and explicit conflict handling. Supported app settings sync too. Mobile quality preferences are shared by iPad and iPhone; headset calibration stays local. Halo profiles and saved control bindings travel with the game saves.
 
+The public **130.1 sideload preview uses local saves** and does not include the
+maintainer's iCloud configuration. The cloud setup below applies to source
+builds configured with your own developer team.
+
 After playing, **fully close and reopen 117**, then let Cloud Saves finish in the launcher before switching devices. It is not live checkpoint streaming. Both apps need the same iCloud account and a shared container configured under your developer team. See [cloud setup and switching devices](docs/INSTALL.md#7-carry-your-progress-between-devices).
 
 ## Install from zero
 
-**This repository ships source, not a ready-to-install app or game files.** You will need an Apple Silicon Mac, Xcode, an enrolled Apple Developer Program team, and your own **retail Halo PC 1.10 installation and registration**. Vision Pro requires visionOS 26+; the mobile target requires iOS/iPadOS 18+.
+**Vision Pro from Windows or Linux:** the experimental
+[Build 130.1 IPA and full walkthrough](docs/SIDELOADING.md) cover Apparition,
+pairing, Apple signing, installation, Halo-data import and refreshes. You do
+not need a Mac to install that published IPA. Bring your own **retail Halo PC
+1.10 installation and registration**; no retail game files are supplied.
+Fresh-recipient installation and gameplay through this route remain unverified.
+
+**Building from source on a Mac:** the steps below need an Apple Silicon Mac,
+Xcode, an enrolled Apple Developer Program team, and the same owned game inputs.
+Vision Pro requires visionOS 26+; the mobile target requires iOS/iPadOS 18+.
 
 1. [Prepare the Mac and download this repository](docs/INSTALL.md#1-get-the-prerequisites).
 2. [Import your retail PC disc/ISO or existing Windows installation](docs/INSTALL.md#3-prepare-your-game-files).
@@ -75,7 +88,7 @@ Full native, Metal and Swift checks require an Apple Silicon Mac and the relevan
 
 The original MIT [license](LICENSE) and copyright notice are retained. See [THIRD_PARTY.md](THIRD_PARTY.md) and [asset notices](docs/ASSET_NOTICES.md). Gameplay screenshots contain original game imagery; that content is separate from the MIT-licensed code and the project's original app artwork.
 
-Halo and its game content belong to their respective owners. 117 is not affiliated with or endorsed by Microsoft, Halo Studios, Bungie, Gearbox, Sony or Apple. The repository does not include retail game files, registration, saves, translated executable output or signed apps. Upstream release archives are separate from this project's source release.
+Halo and its game content belong to their respective owners. 117 is not affiliated with or endorsed by Microsoft, Halo Studios, Bungie, Gearbox, Sony or Apple. The source checkout does not include retail game files, registration, saves, translated executable output or signed apps. The separate IPA release contains the compiled runtime and must be re-signed for the recipient. Historical upstream archives are separate artifacts.
 
 ## Issues
 

@@ -1,0 +1,46 @@
+{
+  "repository": "https://github.com/zschwendi/117-vision",
+  "sourceRevision": "cf548b4af133cd40a6c652de501dfef242c8243c",
+  "executable": "HaloVision",
+  "inputBuild": "130",
+  "assetName": "117-vision-visionOS-130.1.ipa",
+  "include": [
+    "Assets.car",
+    "HaloVision",
+    "Info.plist",
+    "PkgInfo",
+    "PrivacyInfo.xcprivacy",
+    "ThirdPartyNotices.txt"
+  ],
+  "exclude": [
+    "_CodeSignature",
+    "embedded.mobileprovision",
+    "GamePayload",
+    "GamePayloadManifest.json",
+    "CEnshineSources.zip",
+    "ShaderMods.hvs",
+    "VisualModsManifest.json",
+    "TextureMods.hvt",
+    "audio_session.inc"
+  ],
+  "inputSHA256": {
+    "Assets.car": "be7ccfde75c30245290367d829c380c9057390f7684332995a78593b8b050774",
+    "HaloVision": "d7936f0720f9d0a28c561aca0248bb330720d0a5788fcdb0b007897dff27f081",
+    "Info.plist": "fcbf4a52a225b59db7a6c8c818f36bf0a7e25144980d527a477626d4915a89be",
+    "PkgInfo": "82502191c9484b04d685374f9879a0066069c49b8acae7a04b01d38d07e8eca0",
+    "PrivacyInfo.xcprivacy": "d95c682d0e4641f359c134de4e235773a16e61fa0310bc1d9e4afdccda1e0a80",
+    "ThirdPartyNotices.txt": "41b0c8d8b8738f06b94bc1a56e607da5b26a60577d76f283e773eb8ad3ada9e7"
+  },
+  "plistOverrides": {
+    "CFBundleVersion": "130.1",
+    "UIFileSharingEnabled": true,
+    "LSSupportsOpeningDocumentsInPlace": true
+  },
+  "entitlements": {},
+  "changes": [
+    "Exclude bundled game payload, payload manifest, registration and optional visual-mod resources.",
+    "Enable the existing owned-folder importer by omitting both GamePayload and its manifest.",
+    "Replace developer signing with ad-hoc signing for recipient re-signing; use local saves.",
+    "Keep the Build130 executable unchanged apart from its code signature."
+  ]
+}

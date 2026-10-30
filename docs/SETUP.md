@@ -3,7 +3,7 @@
 For the complete first-time path, including iPad/iPhone installation and shared
 iCloud setup, start with [Install 117 from scratch](INSTALL.md).
 
-This is 117, an independent continuation of Master Chef. This repository distributes source; references to an upstream Complete bundle describe a separate upstream artifact, not a 117 binary release.
+This is 117, an independent continuation of Master Chef. This guide covers source builds. The separate [experimental IPA guide](SIDELOADING.md) covers the asset-free 117 preview; references here to an upstream Complete bundle describe a different artifact.
 
 Run this on an Apple Silicon Mac. You supply your own **retail Halo: Combat
 Evolved for PC disc/ISO and valid product key**. The wizard prepares a private

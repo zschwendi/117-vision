@@ -1,3 +1,6 @@
+For the IPA route and its current limits, see [sideloading](docs/SIDELOADING.md).
+The guide below covers building from source.
+
 # Install 117 on Apple Vision Pro
 
 117 is a native Apple port of **Halo: Combat Evolved**, built on

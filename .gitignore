@@ -45,3 +45,6 @@ xcuserdata/
 *.mc-save
 *.tpf
 halo-vision-registry.txt
+
+# Local sideload packages; publish through GitHub Releases.
+release-output/

@@ -2,7 +2,7 @@
 
 Download the [117 Build 130.1 visionOS preview](https://github.com/zschwendi/117-vision/releases/tag/visionos-v130.1).
 This package contains the Build 130 runtime and uses the existing game-folder
-importer. **It does not include Halo, your product registration, or a texture
+importer. **It does not include Halo’s retail game files, your product registration, or a texture
 mod pack.** You supply your own supported Halo PC installation.
 
 You need Vision Pro on **visionOS 26 or later**, a gamepad, and the original

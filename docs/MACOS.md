@@ -24,4 +24,4 @@ This packages the project's existing native macOS host with a small folder-selec
 
 The local engine log is Library/Logs/117-macOS-preview.log. Review/redact logs before posting; keep your game files, registration and saved profiles private.
 
-Maintainers build the reviewed generated inputs with make -C native/EngineHost -j2 and package the resulting halo-host using tools/package_macos.py. The source and generated-input hashes are recorded with the release; the generated C and private game data are not source-release assets.
+Maintainers build the reviewed generated inputs with MACOSX_DEPLOYMENT_TARGET=26.0 make -C native/EngineHost -j2 and package the resulting halo-host using tools/package_macos.py. The source and generated-input hashes are recorded with the release; the generated C and private game data are not source-release assets.

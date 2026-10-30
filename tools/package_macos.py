@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """Package the native arm64 desktop engine with a small owned-folder launcher."""
-import argparse,hashlib,json,plistlib,shutil,subprocess,tempfile,zipfile
+import argparse,hashlib,json,plistlib,re,shutil,subprocess,tempfile,zipfile
 from pathlib import Path
 ROOT=Path(__file__).resolve().parents[1]
 def sha(p):
@@ -34,7 +34,12 @@ def main():
   shutil.copy2(ROOT/'LICENSE',res/'PortLicense.txt')
   shutil.copy2(ROOT/'native/EngineVision/Resources/ThirdPartyNotices.txt',res/'ThirdPartyNotices.txt')
   # The desktop app selects an external owned game folder. No game payload or registration is copied.
-  for binary in mac.iterdir():run('codesign','--force','--sign','-','--timestamp=none',binary)
+  for binary in mac.iterdir():
+   load=run('xcrun','vtool','-show-build',binary)
+   versions=re.findall(r'\bminos (\S+)',load)
+   if not versions or any(tuple(map(int,v.split('.')))>(26,0,0) for v in versions):
+    raise ValueError('Binary requires a newer OS than the declared macOS26.0 minimum')
+   run('codesign','--force','--sign','-','--timestamp=none',binary)
   run('codesign','--force','--sign','-','--timestamp=none',app)
   run('codesign','--verify','--deep','--strict',app)
   a.output.mkdir();asset=a.output/'117-macOS-arm64-130.1-preview.zip';files=[]

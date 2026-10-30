@@ -1,5 +1,7 @@
 **[Windows / Linux: download the IPA and follow the full installation guide](docs/SIDELOADING.md)**
 
+**Downloads:** [Choose iPhone/iPad, Vision Pro or Mac](docs/DOWNLOADS.md).
+
 # 117
 
 **Halo: Combat Evolved on Vision Pro, iPad and iPhone. Immersive on the headset. Full-screen on mobile. Shared saves and settings through iCloud.**

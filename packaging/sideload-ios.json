@@ -1,0 +1,65 @@
+{
+  "repository": "https://github.com/zschwendi/117-vision",
+  "platform": "iOS",
+  "sourceRevision": "cf548b4af133cd40a6c652de501dfef242c8243c",
+  "inputProvenance": {
+    "kind": "historical-build-repack",
+    "originalExecutableSHA256": "efda918a16bf240d0be9d2a0b8f4eaa2223182a983d1f38fb151936b3b952d2c",
+    "gameplayAfterResigningTested": false
+  },
+  "executable": "MasterCheef",
+  "inputBuild": "130",
+  "assetName": "117-iOS-130.1.ipa",
+  "include": [
+    "AppIcon60x60@2x.png",
+    "AppIcon76x76@2x~ipad.png",
+    "Assets.car",
+    "Info.plist",
+    "MasterCheef",
+    "PkgInfo",
+    "PrivacyInfo.xcprivacy",
+    "ThirdPartyNotices.txt"
+  ],
+  "exclude": [
+    "_CodeSignature",
+    "embedded.mobileprovision",
+    "GamePayload",
+    "GamePayloadManifest.json",
+    "CEnshineSources.zip",
+    "ShaderMods.hvs",
+    "VisualModsManifest.json",
+    "TextureMods.hvt"
+  ],
+  "inputSHA256": {
+    "AppIcon60x60@2x.png": "232c2d28f581f2b4dfa3e825b4d7d2c2524f0eab089c944b2baef6d6db92e525",
+    "AppIcon76x76@2x~ipad.png": "05ba88fb2ac15a27c202dd59d19c7bc0b85827c66bcf4a7da8d33f10a835b8c9",
+    "Assets.car": "0b4a6be64d6255f70414cb6608158df33a0c13ddff504194408678d38a7daf43",
+    "Info.plist": "cbef8b8760f22c7d77ef7261776a7cd63ee2cbb74e121a749f09bf2e17bb17e2",
+    "MasterCheef": "efda918a16bf240d0be9d2a0b8f4eaa2223182a983d1f38fb151936b3b952d2c",
+    "PkgInfo": "82502191c9484b04d685374f9879a0066069c49b8acae7a04b01d38d07e8eca0",
+    "PrivacyInfo.xcprivacy": "d95c682d0e4641f359c134de4e235773a16e61fa0310bc1d9e4afdccda1e0a80",
+    "ThirdPartyNotices.txt": "41b0c8d8b8738f06b94bc1a56e607da5b26a60577d76f283e773eb8ad3ada9e7"
+  },
+  "plistOverrides": {
+    "CFBundleVersion": "130.1",
+    "UIFileSharingEnabled": true,
+    "LSSupportsOpeningDocumentsInPlace": true,
+    "MasterCheefRequireVisionSeed": false
+  },
+  "entitlements": {
+    "com.apple.developer.kernel.extended-virtual-addressing": true,
+    "com.apple.developer.kernel.increased-memory-limit": true
+  },
+  "requiredInputCapabilities": {
+    "com.apple.developer.kernel.extended-virtual-addressing": true,
+    "com.apple.developer.kernel.increased-memory-limit": true
+  },
+  "changes": [
+    "Package the existing physical iPhone/iPad build; no engine recompilation.",
+    "Replace developer signing with ad-hoc transport signing; recipient must re-sign.",
+    "Preserve Extended Virtual Addressing and Increased Memory Limit; paid developer signing is required.",
+    "Enable Files access; no developer profile, signing certificate, registration or retail game-data files included.",
+    "Exclude GamePayload, registration and optional visual-mod resources so the existing folder importer is available.",
+    "Disable the private Vision Pro save-seeding requirement; use local saves."
+  ]
+}

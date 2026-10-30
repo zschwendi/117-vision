@@ -1,4 +1,6 @@
-# Install 117 from Windows or Linux
+# Install 117 on Vision Pro from Windows or Linux
+
+**iPhone/iPad users:** use the separate [iOS download and USB-pairing guide](IOS-SIDELOADING.md). [All platform downloads](DOWNLOADS.md).
 
 Download the [117 Build 130.1 visionOS preview](https://github.com/zschwendi/117-vision/releases/tag/visionos-v130.1).
 This package contains the Build 130 runtime and uses the existing game-folder
